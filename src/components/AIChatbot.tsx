@@ -44,7 +44,7 @@ export function AIChatbot() {
   return (
     <>
       {/* Floating Chatbot Toggle Button */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 items-end z-50">
+      <div className="fixed bottom-6 left-6 flex flex-col gap-3 items-start z-50">
         {isOpen && (
           <div className="w-80 h-96 bg-background border rounded-lg shadow-xl flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
             <div className="bg-primary text-primary-foreground p-3 flex justify-between items-center">

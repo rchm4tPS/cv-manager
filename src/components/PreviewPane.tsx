@@ -4,8 +4,10 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useResumeStore } from "@/store/useResumeStore";
+import { supabaseApi } from "@/lib/supabase-api";
+import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
-import { Bold, Italic, Underline, GripVertical } from "lucide-react";
+import { Bold, Italic, Underline, GripVertical, Trash2 } from "lucide-react";
 import { Rulers } from "./Ruler";
 
 function FloatingToolbar() {
@@ -133,7 +135,7 @@ function SpacingGap({ property, value, isSpacingMode, asLi, zoom = 1 }: { proper
   }
 
   const content = (
-    <div style={{ height: value, position: 'relative', width: '100%', lineHeight: 0, fontSize: 0 }}>
+    <div className="print:hidden" style={{ height: value, position: 'relative', width: '100%', lineHeight: 0, fontSize: 0 }}>
       <div 
         className={`absolute inset-x-0 top-1/2 -translate-y-1/2 cursor-ns-resize z-50 flex items-center justify-center ${isDragging ? theme.hover : theme.bg + ' ' + theme.hover} ${value > 0 ? `border-y ${theme.border} border-dashed` : `bg-transparent border-t-2 ${theme.line}`} transition-colors`}
         style={{ height: Math.max(value, 4), lineHeight: 0, fontSize: 0 }}
@@ -164,6 +166,39 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   const [zoom, setZoom] = useState(1);
   const [isSpacingMode, setIsSpacingMode] = useState(false);
   const measureContainerRef = React.useRef<HTMLDivElement>(null);
+  const printRef = React.useRef<HTMLDivElement>(null);
+  const pageSize = resume.settings.pageSize || 'Letter';
+  
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    pageStyle: `@page { size: ${pageSize === 'A4' ? 'A4' : pageSize === 'Legal' ? 'Legal' : 'Letter'}; margin: 0mm; }`
+  });
+
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadPhoto() {
+      if (resume.personalInfo.photoUrl) {
+        if (resume.personalInfo.photoUrl.startsWith('avatars/')) {
+          const url = await supabaseApi.getProfilePhotoUrl(resume.personalInfo.photoUrl);
+          setPhotoDataUrl(url);
+        } else {
+          setPhotoDataUrl(resume.personalInfo.photoUrl);
+        }
+      } else {
+        setPhotoDataUrl(null);
+      }
+    }
+    loadPhoto();
+  }, [resume.personalInfo.photoUrl]);
+
+  useEffect(() => {
+    const handlePrintEvent = () => {
+      handlePrint();
+    };
+    window.addEventListener('print-resume', handlePrintEvent);
+    return () => window.removeEventListener('print-resume', handlePrintEvent);
+  }, [handlePrint]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -277,7 +312,6 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     lineHeight: settings.typography?.lineHeight || 1.5,
     textAlign: settings.typography?.textAlign || 'left',
   };
-  const pageSize = settings.pageSize || 'Letter';
 
   const defaultSpacing = { nameGap: 12, headerGap: 16, sectionGap: 16, titleGap: 8, itemGap: 12, lineGap: 4, bulletGap: 4 };
   const spacing = { ...defaultSpacing, ...(settings.spacing || {}) };
@@ -297,38 +331,70 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   // Build the flat list of elements
   const elements: { id: string; type: string; content: React.ReactNode }[] = [];
 
-  const hasPersonalInfo = personalInfo.name || contactItems.length > 0;
+  const hasPersonalInfo = personalInfo.name || contactItems.length > 0 || photoDataUrl;
 
   if (hasPersonalInfo) {
+    const isPhotoLeft = settings.photoPosition === 'left';
+    const textAlignmentClass = photoDataUrl ? (isPhotoLeft ? 'text-right' : 'text-left') : 'text-center';
+    const flexAlignmentClass = photoDataUrl ? (isPhotoLeft ? 'justify-end' : 'justify-start') : 'justify-center';
+    
     elements.push({
-      id: 'header',
+      id: 'personal-info',
       type: 'header',
       content: (
-        <div key="header" data-measure-id="header">
-          <div className="text-center">
-            <h1 
-              className="font-bold uppercase tracking-wider text-black text-center block w-full hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors" 
-              style={{ fontSize: `${typography.titleSize}px` }}
-              onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                  const firstSpan = e.currentTarget.querySelector('span');
-                  if (firstSpan) firstSpan.focus();
-                }
-              }}
-            >
-              <span className="outline-none min-w-[20px] inline-block" contentEditable suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('name', e)}>
-                {personalInfo.name}
-              </span>
-            </h1>
-            <SpacingGap zoom={zoom} property="nameGap" value={spacing.nameGap} isSpacingMode={isSpacingMode} />
-            <div className="text-black flex items-center justify-center gap-1.5 flex-wrap" style={{ fontSize: `${typography.bodySize}px` }}>
-              {contactItems.map((item, index) => (
-                <React.Fragment key={index}>
-                  {item}
-                  {index < contactItems.length - 1 && <span className="text-gray-400">|</span>}
-                </React.Fragment>
-              ))}
+        <div key="header" data-measure-id="personal-info" className="w-full">
+          <div className={`flex items-start justify-between w-full ${isPhotoLeft ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div className={`flex-1 ${textAlignmentClass}`}>
+              <h1 
+                className={`font-bold uppercase tracking-wider text-black block w-full hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors ${textAlignmentClass}`} 
+                style={{ fontSize: `${typography.titleSize}px` }}
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    const firstSpan = e.currentTarget.querySelector('span');
+                    if (firstSpan) firstSpan.focus();
+                  }
+                }}
+              >
+                <span className="outline-none min-w-[20px] inline-block" contentEditable suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('name', e)}>
+                  {personalInfo.name}
+                </span>
+              </h1>
+              <SpacingGap zoom={zoom} property="nameGap" value={spacing.nameGap} isSpacingMode={isSpacingMode} />
+              <div className={`text-black flex items-center gap-1.5 flex-wrap ${flexAlignmentClass}`} style={{ fontSize: `${typography.bodySize}px` }}>
+                {contactItems.map((item, index) => (
+                  <React.Fragment key={index}>
+                    {item}
+                    {index < contactItems.length - 1 && <span className="text-gray-400">|</span>}
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
+            {photoDataUrl && (
+              <div className={`${isPhotoLeft ? 'mr-6' : 'ml-6'} shrink-0 relative group`}>
+                <button 
+                  onClick={() => {
+                    if (resume.personalInfo.photoUrl?.startsWith('avatars/')) {
+                      supabaseApi.deleteProfilePhoto(resume.personalInfo.photoUrl).catch(console.error);
+                    }
+                    updatePersonalInfo({ photoUrl: undefined });
+                  }}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity print:hidden shadow-sm"
+                  title="Remove photo"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={photoDataUrl} 
+                  alt="Profile" 
+                  className="w-24 h-24 object-cover rounded-md" 
+                  onLoad={() => {
+                    // Force a re-measure now that the image is loaded
+                    setItemHeights(prev => ({...prev}));
+                  }}
+                />
+              </div>
+            )}
           </div>
           <div className="mt-4 border-b-2 border-black w-full" />
           <SpacingGap zoom={zoom} property="headerGap" value={spacing.headerGap} isSpacingMode={isSpacingMode} />
@@ -509,20 +575,40 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
 
   React.useLayoutEffect(() => {
     if (!measureContainerRef.current) return;
-    const heights: Record<string, number> = {};
-    let changed = false;
     
-    const nodes = measureContainerRef.current.querySelectorAll('[data-measure-id]');
-    nodes.forEach(node => {
-      const id = node.getAttribute('data-measure-id')!;
-      const h = (node as HTMLElement).offsetHeight;
-      if (itemHeights[id] !== h) changed = true;
-      heights[id] = h;
-    });
+    const measureHeights = () => {
+      const heights: Record<string, number> = {};
+      let changed = false;
+      const nodes = measureContainerRef.current!.querySelectorAll('[data-measure-id]');
+      nodes.forEach(node => {
+        const id = node.getAttribute('data-measure-id')!;
+        const rect = node.getBoundingClientRect();
+        // The rect height is visually scaled by zoom, so we divide by zoom to get the true CSS pixel height
+        const h = rect.height / zoom;
+        if (Math.abs((itemHeights[id] || 0) - h) > 0.5) changed = true;
+        heights[id] = h;
+      });
+      if (changed) {
+        setItemHeights(heights);
+      }
+    };
 
-    if (changed) {
-      setItemHeights(heights);
+    measureHeights();
+
+    // Use ResizeObserver to catch font loading or any other layout shifts
+    const observer = new ResizeObserver(() => {
+      measureHeights();
+    });
+    observer.observe(measureContainerRef.current);
+
+    // Also observe all document fonts
+    if ('fonts' in document) {
+      document.fonts.ready.then(() => {
+        measureHeights();
+      });
     }
+
+    return () => observer.disconnect();
   });
 
   const pages: React.ReactNode[][] = [[]];
@@ -546,8 +632,20 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     }
   });
 
+  const [currentPageNum, setCurrentPageNum] = useState(1);
+  const handleContainerScroll = (e: React.UIEvent<HTMLElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    // Account for zoom and gaps. 
+    const pageHeightPx = (maxAvailableHeightPx + (settings.margin.top + settings.margin.bottom)*96) * zoom;
+    const paddingAndGapOffset = (64 * zoom) + (96 * zoom); // pt-16, gap-24
+    
+    // Roughly estimate which page is primarily in view
+    const pageIndex = Math.max(0, Math.floor((scrollTop + (pageHeightPx/2)) / (pageHeightPx + paddingAndGapOffset)));
+    setCurrentPageNum(Math.min(pages.length, pageIndex + 1));
+  };
+
   return (
-    <section className="flex-1 h-full bg-muted overflow-y-auto flex flex-col items-center relative" id="preview-container">
+    <section className="flex-1 h-full bg-muted overflow-y-auto flex flex-col items-center relative" id="preview-container" onScroll={handleContainerScroll}>
       {/* Zoom Controls (Sticky Top) */}
       <div className="sticky top-0 w-full z-50 pointer-events-none" style={{ height: 0 }}>
         <div 
@@ -582,32 +680,41 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
           width: pageSize === 'A4' ? '8.27in' : pageSize === 'Legal' ? '8.5in' : '8.5in',
           paddingLeft: `${settings.margin.left}in`,
           paddingRight: `${settings.margin.right}in`,
-          fontFamily: typography.fontFamily
+          fontFamily: typography.fontFamily,
+          lineHeight: typography.lineHeight,
+          zoom: zoom
         }}
       >
         {elements.map(el => el.content)}
       </div>
 
-      <div className="flex flex-col gap-24 pb-16 transition-all" style={{ zoom }}>
-        {pages.map((pageContent, pageIndex) => (
-          <div 
-            key={pageIndex}
-            className="bg-white shadow-xl relative shrink-0"
-            style={{
-              width: pageSize === 'A4' ? '8.27in' : pageSize === 'Legal' ? '8.5in' : '8.5in',
-              height: pageSize === 'A4' ? '11.69in' : pageSize === 'Legal' ? '14in' : '11in',
-              paddingTop: `${settings.margin.top}in`,
-              paddingBottom: `${settings.margin.bottom}in`,
-              paddingLeft: `${settings.margin.left}in`,
-              paddingRight: `${settings.margin.right}in`,
-              fontFamily: typography.fontFamily
-            }}
-          >
-            {showRuler && settings.showRulers !== false && <Rulers zoom={zoom} />}
-            {pageContent}
-          </div>
-        ))}
+      <div className="transition-all" style={{ zoom }}>
+        <div className="flex flex-col gap-24 print:gap-0 pb-16 print:pb-0" ref={printRef}>
+          {pages.map((pageContent, pageIndex) => (
+            <div 
+              key={pageIndex}
+              className="bg-white shadow-xl relative shrink-0"
+              style={{
+                width: pageSize === 'A4' ? '8.27in' : pageSize === 'Legal' ? '8.5in' : '8.5in',
+                height: pageSize === 'A4' ? '11.69in' : pageSize === 'Legal' ? '14in' : '11in',
+                paddingTop: `${settings.margin.top}in`,
+                paddingBottom: `${settings.margin.bottom}in`,
+                paddingLeft: `${settings.margin.left}in`,
+                paddingRight: `${settings.margin.right}in`,
+                fontFamily: typography.fontFamily,
+                lineHeight: typography.lineHeight
+              }}
+            >
+              {showRuler && settings.showRulers !== false && <Rulers zoom={zoom} />}
+              {pageContent}
+            </div>
+          ))}
+        </div>
       </div>
+      </div>
+
+      <div className="fixed bottom-6 right-8 bg-slate-900/80 backdrop-blur-md text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl z-50 pointer-events-none transition-all">
+        Page {currentPageNum} of {pages.length}
       </div>
     </section>
   );

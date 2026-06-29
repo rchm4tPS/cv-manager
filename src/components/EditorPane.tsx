@@ -1,15 +1,123 @@
 /* eslint-disable react-hooks/purity */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { useResumeStore } from "@/store/useResumeStore";
+import { supabaseApi } from "@/lib/supabase-api";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, User, FileText, Briefcase, GraduationCap, GripVertical, Trash2, UploadCloud, FolderDot, Sparkles, Plus, Star } from "lucide-react";
+import { ChevronDown, ChevronUp, User, FileText, Briefcase, GraduationCap, GripVertical, Trash2, UploadCloud, FolderDot, Sparkles, Plus, Star, Loader2 } from "lucide-react";
 
 const inputClass = "w-full h-9 rounded-md border border-slate-200 bg-white shadow-sm px-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
 
 function PersonalInfoForm() {
   const { resume, updatePersonalInfo } = useResumeStore();
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [imgSrc, setImgSrc] = useState('');
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      if (file.size > 1 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 1MB.",
+          variant: "destructive"
+        });
+        return;
+      }
+      setPendingFile(file);
+      setCrop(undefined); 
+      const reader = new FileReader();
+      reader.addEventListener('load', () =>
+        setImgSrc(reader.result?.toString() || '')
+      );
+      reader.readAsDataURL(file);
+      setShowCropModal(true);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    const newCrop = centerCrop(
+      makeAspectCrop({ unit: '%', width: 90 }, 1, width, height),
+      width,
+      height
+    );
+    setCrop(newCrop);
+  };
+
+  const handleCropComplete = async () => {
+    if (!imgRef.current || !crop || !pendingFile) return;
+
+    const canvas = document.createElement('canvas');
+    const image = imgRef.current;
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height
+    );
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const fileExt = pendingFile.name.split('.').pop() || 'jpg';
+      const newFile = new File([blob], `cropped-${Date.now()}.${fileExt}`, { type: pendingFile.type || 'image/jpeg' });
+
+      try {
+        setIsUploading(true);
+        setShowCropModal(false);
+        const path = await supabaseApi.uploadProfilePhoto(newFile, resume.userId);
+        updatePersonalInfo({ photoUrl: path });
+        toast({
+          title: "Success",
+          description: "Profile photo uploaded."
+        });
+      } catch (error) {
+        console.error("Failed to upload photo:", error);
+        toast({
+          title: "Upload Failed",
+          description: error instanceof Error ? error.message : "Failed to upload photo.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsUploading(false);
+        setPendingFile(null);
+      }
+    }, pendingFile.type || 'image/jpeg');
+  };
+
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
@@ -94,11 +202,72 @@ function PersonalInfoForm() {
       
       <div className="pt-4">
         <label className="text-xs font-semibold text-muted-foreground block mb-2">Profile Photo</label>
-        <Button variant="outline" className="text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100 flex gap-2">
-          <UploadCloud className="w-4 h-4" /> Upload Photo
-        </Button>
-        <p className="text-[10px] text-muted-foreground mt-2">Upload a professional headshot (max 2MB)</p>
+        <input 
+          type="file" 
+          ref={fileInputRef}
+          className="hidden" 
+          accept="image/*"
+          onChange={handlePhotoSelect}
+        />
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            className="text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100 flex gap-2 flex-1"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />} 
+            {isUploading ? "Uploading..." : resume.personalInfo.photoUrl ? "Change Photo" : "Upload Photo"}
+          </Button>
+          {resume.personalInfo.photoUrl && (
+            <Button
+              variant="outline"
+              className="text-red-600 bg-red-50 border-red-200 hover:bg-red-100 shrink-0 px-3"
+              onClick={() => {
+                if (resume.personalInfo.photoUrl?.startsWith('avatars/')) {
+                  supabaseApi.deleteProfilePhoto(resume.personalInfo.photoUrl).catch(console.error);
+                }
+                updatePersonalInfo({ photoUrl: undefined });
+              }}
+              title="Remove photo"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2">Upload a professional headshot (max 1MB)</p>
       </div>
+
+      {showCropModal && mounted && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full shadow-2xl">
+            <h3 className="text-lg font-semibold mb-4">Crop Photo</h3>
+            <div className="max-h-[60vh] overflow-y-auto flex justify-center bg-slate-100 rounded-md">
+              {imgSrc && (
+                <ReactCrop
+                  crop={crop}
+                  onChange={(c) => setCrop(c)}
+                  aspect={1}
+                  circularCrop
+                >
+                  <img 
+                    ref={imgRef}
+                    src={imgSrc} 
+                    onLoad={onImageLoad} 
+                    style={{ maxHeight: '50vh' }}
+                    alt="Crop preview" 
+                  />
+                </ReactCrop>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowCropModal(false)}>Cancel</Button>
+              <Button onClick={handleCropComplete}>Crop & Upload</Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

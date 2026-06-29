@@ -199,6 +199,17 @@ export function SettingsPane() {
                 <option value="justify">Justified</option>
               </select>
             </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Photo Position</label>
+              <select
+                className={inputClass}
+                value={settings.photoPosition || "right"}
+                onChange={(e) => updateSettings({ photoPosition: e.target.value as "left" | "right" })}
+              >
+                <option value="left">Left</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
           </div>
         </div>
 

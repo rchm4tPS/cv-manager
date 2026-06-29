@@ -60,7 +60,7 @@ export function Rulers({ zoom = 1 }: { zoom?: number }) {
   };
 
   return (
-    <>
+    <div className="absolute inset-0 pointer-events-none z-40 print:hidden">
       {/* Horizontal Ruler (Top) */}
       <div 
         className="absolute top-[-28px] left-0 right-0 h-[24px] bg-white border border-slate-300 rounded-t-sm shadow-sm"
@@ -92,7 +92,7 @@ export function Rulers({ zoom = 1 }: { zoom?: number }) {
         
         {/* Left Handle */}
         <div 
-          className="absolute top-0 bottom-0 w-[14px] cursor-col-resize flex flex-col items-center justify-end z-10 -ml-[7px]"
+          className="absolute top-0 bottom-0 w-[14px] cursor-col-resize flex flex-col items-center justify-end z-10 -ml-[7px] pointer-events-auto"
           style={{ left: `${margin.left}in` }}
           onMouseDown={(e) => handleDrag(e, 'left')}
         >
@@ -107,7 +107,7 @@ export function Rulers({ zoom = 1 }: { zoom?: number }) {
 
         {/* Right Handle */}
         <div 
-          className="absolute top-0 bottom-0 w-[14px] cursor-col-resize flex flex-col items-center justify-end z-10 -mr-[7px]"
+          className="absolute top-0 bottom-0 w-[14px] cursor-col-resize flex flex-col items-center justify-end z-10 -mr-[7px] pointer-events-auto"
           style={{ right: `${margin.right}in` }}
           onMouseDown={(e) => handleDrag(e, 'right')}
         >
@@ -152,7 +152,7 @@ export function Rulers({ zoom = 1 }: { zoom?: number }) {
 
         {/* Top Handle */}
         <div 
-          className="absolute left-0 right-0 h-[14px] cursor-row-resize flex flex-row items-center justify-end z-10 -mt-[7px]"
+          className="absolute left-0 right-0 h-[14px] cursor-row-resize flex flex-row items-center justify-end z-10 -mt-[7px] pointer-events-auto"
           style={{ top: `${margin.top}in` }}
           onMouseDown={(e) => handleDrag(e, 'top')}
         >
@@ -167,7 +167,7 @@ export function Rulers({ zoom = 1 }: { zoom?: number }) {
 
         {/* Bottom Handle */}
         <div 
-          className="absolute left-0 right-0 h-[14px] cursor-row-resize flex flex-row items-center justify-end z-10 -mb-[7px]"
+          className="absolute left-0 right-0 h-[14px] cursor-row-resize flex flex-row items-center justify-end z-10 -mb-[7px] pointer-events-auto"
           style={{ bottom: `${margin.bottom}in` }}
           onMouseDown={(e) => handleDrag(e, 'bottom')}
         >
@@ -186,6 +186,6 @@ export function Rulers({ zoom = 1 }: { zoom?: number }) {
       {(dragging === 'right' || (dragging === 'left' && resume.settings.linkOppositeMargins)) && <div className="absolute top-0 bottom-0 border-r border-dashed border-blue-500 z-50 pointer-events-none" style={{ right: `${margin.right}in` }} />}
       {(dragging === 'top' || (dragging === 'bottom' && resume.settings.linkOppositeMargins)) && <div className="absolute left-0 right-0 border-t border-dashed border-blue-500 z-50 pointer-events-none" style={{ top: `${margin.top}in` }} />}
       {(dragging === 'bottom' || (dragging === 'top' && resume.settings.linkOppositeMargins)) && <div className="absolute left-0 right-0 border-b border-dashed border-blue-500 z-50 pointer-events-none" style={{ bottom: `${margin.bottom}in` }} />}
-    </>
+    </div>
   );
 }

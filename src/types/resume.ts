@@ -47,6 +47,7 @@ export interface DocumentSettings {
   linkOppositeMargins?: boolean;
   showRulers?: boolean;
   itemLayout?: "inline" | "separateRow";
+  photoPosition?: "left" | "right";
   margin: {
     top: number;
     bottom: number;

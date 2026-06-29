@@ -114,7 +114,7 @@ export function Header() {
       <div className="flex items-center gap-2 flex-1 justify-end">
         {isEditor && (
           <>
-            <Button variant="outline" size="sm">Export PDF</Button>
+            <Button variant="outline" size="sm" onClick={() => window.dispatchEvent(new Event('print-resume'))}>Export PDF</Button>
             <Button size="sm" onClick={handleSave} disabled={isSaving || !isDirty}>
               {isSaving ? "Saving..." : "Save"}
             </Button>

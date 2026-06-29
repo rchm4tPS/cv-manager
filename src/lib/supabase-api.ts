@@ -147,5 +147,49 @@ export const supabaseApi = {
       console.error('Error deleting job:', error);
       throw error;
     }
+  },
+
+  // --- Storage ---
+  
+  async uploadProfilePhoto(file: File, userId: string = 'local-user') {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+
+    if (error) {
+      console.error('Error uploading photo:', error);
+      throw error;
+    }
+    
+    return filePath;
+  },
+
+  async getProfilePhotoUrl(path: string) {
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
+
+    if (error) {
+      console.error('Error getting signed url:', error);
+      return null;
+    }
+
+    return data.signedUrl;
+  },
+
+  async deleteProfilePhoto(path: string) {
+    const { error } = await supabase.storage
+      .from('avatars')
+      .remove([path]);
+
+    if (error) {
+      console.error('Error deleting photo:', error);
+      throw error;
+    }
+    return true;
   }
 };
