@@ -537,7 +537,17 @@ function WorkExperienceForm() {
                   <textarea 
                     className="text-sm flex-1 leading-relaxed text-slate-700 bg-transparent resize-none outline-none h-20 cursor-text" 
                     value={desc.replace(/<[^>]+>/g, '')} 
-                    onChange={(e) => updateDesc(item.id, dIdx, e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes('\n')) {
+                        const parts = val.split('\n');
+                        const newDesc = [...item.description];
+                        newDesc.splice(dIdx, 1, ...parts);
+                        updateItem(item.id, 'description', newDesc);
+                      } else {
+                        updateDesc(item.id, dIdx, val);
+                      }
+                    }}
                   />
                   <div className="flex flex-col gap-1 shrink-0 items-center justify-center h-full">
                     <Button variant="ghost" size="icon" className="w-6 h-6"><Sparkles className="w-3 h-3 text-blue-500" /></Button>
@@ -723,7 +733,17 @@ function ProjectExperienceForm() {
                   <textarea 
                     className="text-sm flex-1 leading-relaxed text-slate-700 bg-transparent resize-none outline-none h-16 cursor-text" 
                     value={desc.replace(/<[^>]+>/g, '')} 
-                    onChange={(e) => updateDesc(item.id, dIdx, e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes('\n')) {
+                        const parts = val.split('\n');
+                        const newDesc = [...item.description];
+                        newDesc.splice(dIdx, 1, ...parts);
+                        updateItem(item.id, 'description', newDesc);
+                      } else {
+                        updateDesc(item.id, dIdx, val);
+                      }
+                    }}
                   />
                   <div className="flex flex-col gap-1 shrink-0 items-center justify-center h-full">
                     <Button variant="ghost" size="icon" className="w-6 h-6"><Sparkles className="w-3 h-3 text-blue-500" /></Button>
@@ -1101,7 +1121,17 @@ function CustomSectionForm({ sectionId }: { sectionId: string }) {
                   <textarea 
                     className="text-sm flex-1 leading-relaxed text-slate-700 bg-transparent resize-none outline-none h-20 cursor-text" 
                     value={desc.replace(/<[^>]+>/g, '')} 
-                    onChange={(e) => updateDesc(item.id, dIdx, e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes('\n')) {
+                        const parts = val.split('\n');
+                        const newDesc = [...item.description];
+                        newDesc.splice(dIdx, 1, ...parts);
+                        updateItem(item.id, 'description', newDesc);
+                      } else {
+                        updateDesc(item.id, dIdx, val);
+                      }
+                    }}
                   />
                   <div className="flex flex-col gap-1 shrink-0 items-center justify-center h-full">
                     <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => deleteDesc(item.id, dIdx)}><Trash2 className="w-3 h-3 text-destructive" /></Button>

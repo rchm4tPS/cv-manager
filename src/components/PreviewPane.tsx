@@ -201,21 +201,47 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   }, [handlePrint]);
 
   useEffect(() => {
+    const isTyping = (e: Event) => {
+      const active = document.activeElement as HTMLElement;
+      if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+        return true;
+      }
+      const target = e.target as HTMLElement | null;
+      if (!target) return false;
+      if (target.nodeType === 3) return target.parentElement?.isContentEditable || false;
+      return target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTyping(e)) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+        }
+        return;
+      }
       if (e.key === 'Alt' || e.key === 'Control') setIsSpacingMode(true);
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'Alt' || e.key === 'Control') setIsSpacingMode(false);
     };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    const handlePaste = (e: ClipboardEvent) => {
+      if (isTyping(e)) {
+        e.preventDefault();
+        const text = e.clipboardData?.getData('text/plain');
+        if (text) document.execCommand('insertText', false, text);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    window.addEventListener('keyup', handleKeyUp, { capture: true });
+    window.addEventListener('paste', handlePaste, { capture: true });
     
     const handleBlur = () => setIsSpacingMode(false);
     window.addEventListener('blur', handleBlur);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
+      window.removeEventListener('keyup', handleKeyUp, { capture: true });
+      window.removeEventListener('paste', handlePaste, { capture: true });
       window.removeEventListener('blur', handleBlur);
     };
   }, []);

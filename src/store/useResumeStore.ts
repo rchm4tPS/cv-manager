@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Resume, DocumentSettings, Section } from '@/types/resume';
+import { Resume, DocumentSettings, Section, AnalysisResult, AnalysisMode } from '@/types/resume';
 
 interface ResumeStore {
   resume: Resume;
@@ -16,6 +16,15 @@ interface ResumeStore {
   updateTitle: (title: string) => void;
   isDirty: boolean;
   setIsDirty: (dirty: boolean) => void;
+  // AI Analysis State
+  analysisResult: AnalysisResult | null;
+  setAnalysisResult: (result: AnalysisResult | null) => void;
+  analysisMode: AnalysisMode;
+  setAnalysisMode: (mode: AnalysisMode) => void;
+  activeAnalysisStep: string | null;
+  setActiveAnalysisStep: (stepId: string | null) => void;
+  pendingChanges: Partial<Resume> | null;
+  setPendingChanges: (changes: Partial<Resume> | null) => void;
 }
 
 const defaultResume: Resume = {
@@ -161,8 +170,22 @@ export const useResumeStore = create<ResumeStore>((set) => ({
   tailoringJob: null,
   isDirty: false,
   setIsDirty: (dirty) => set({ isDirty: dirty }),
-  setResume: (resume) => set({ resume, isDirty: false }),
+  setResume: (resume) => set({ resume, isDirty: false, analysisResult: resume.analysisResult || null }),
   setTailoringJob: (job) => set({ tailoringJob: job }),
+  // AI Analysis Init
+  analysisResult: null,
+  setAnalysisResult: (result) => set((state) => ({ 
+    analysisResult: result,
+    resume: { ...state.resume, analysisResult: result || undefined },
+    isDirty: true
+  })),
+  analysisMode: 'inactive',
+  setAnalysisMode: (mode) => set({ analysisMode: mode }),
+  activeAnalysisStep: null,
+  setActiveAnalysisStep: (stepId) => set({ activeAnalysisStep: stepId }),
+  pendingChanges: null,
+  setPendingChanges: (changes) => set({ pendingChanges: changes }),
+  // Methods
   updatePersonalInfo: (info) =>
     set((state) => ({
       resume: {
