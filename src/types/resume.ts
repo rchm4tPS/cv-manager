@@ -96,3 +96,10 @@ export interface AnalysisResult {
   score: number;
   steps: AnalysisStep[];
 }
+
+export interface ChatMessage {
+  role: "user" | "ai";
+  text: string;
+  thought?: string;
+  status?: 'pending' | 'accepted' | 'rejected';
+}

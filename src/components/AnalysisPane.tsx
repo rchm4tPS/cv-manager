@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useResumeStore } from "@/store/useResumeStore";
-import { Loader2, ChevronRight, ArrowLeft, Target, CheckCircle2, Lightbulb, CheckSquare, Eye, ArrowRight, ChevronLeft } from "lucide-react";
+import { Loader2, ChevronRight, ArrowLeft, Target, CheckCircle2, Lightbulb, CheckSquare, Eye, ArrowRight, ChevronLeft, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function AnalysisPane() {
@@ -14,7 +14,8 @@ export function AnalysisPane() {
     analysisMode, 
     setAnalysisMode,
     activeAnalysisStep,
-    setActiveAnalysisStep
+    setActiveAnalysisStep,
+    setIsChatOpen
   } = useResumeStore();
   const { toast } = useToast();
   const [analyzing, setAnalyzing] = useState(false);
@@ -90,7 +91,7 @@ export function AnalysisPane() {
   }
 
   // Detail View
-  if (activeAnalysisStep && (analysisMode === 'step-detail' || analysisMode === 'chat')) {
+  if (activeAnalysisStep && analysisMode === 'step-detail') {
     const step = analysisResult.steps.find(s => s.id === activeAnalysisStep);
     if (!step) return null;
 
@@ -142,8 +143,8 @@ export function AnalysisPane() {
           </Button>
         </div>
 
-        {/* Back Button */}
-        <div className="flex justify-center mb-4 shrink-0">
+        {/* Back and Chat Buttons */}
+        <div className="flex justify-center gap-3 mb-4 shrink-0">
           <Button 
             variant="outline" 
             className="bg-white rounded-full text-xs shadow-sm hover:bg-slate-50 transition-colors"
@@ -153,7 +154,15 @@ export function AnalysisPane() {
             }}
           >
             <ArrowLeft className="w-3.5 h-3.5 mr-2" />
-            Back to Sections
+            Back
+          </Button>
+          <Button 
+            variant="default" 
+            className="bg-blue-600 hover:bg-blue-700 rounded-full text-xs shadow-sm transition-colors"
+            onClick={() => setIsChatOpen(true)}
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-2" />
+            Open AI Chat
           </Button>
         </div>
 
@@ -224,7 +233,7 @@ export function AnalysisPane() {
                         </div>
                         <Button 
                           className="rounded-full bg-blue-600 hover:bg-blue-700 shadow-sm transition-all shrink-0 w-full @[400px]:w-auto"
-                          onClick={() => setAnalysisMode('chat')}
+                          onClick={() => setIsChatOpen(true)}
                         >
                           Fix with AI <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
@@ -274,7 +283,16 @@ export function AnalysisPane() {
           </div>
         </div>
         
-        <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
+        <div className="flex flex-col items-center gap-3 shrink-0">
+          <Button 
+            variant="default" 
+            className="bg-blue-600 hover:bg-blue-700 rounded-full text-xs shadow-sm transition-colors w-full"
+            onClick={() => setIsChatOpen(true)}
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-2" />
+            Open AI Chat
+          </Button>
+          <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
           <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
             <circle className="text-slate-100 stroke-current" strokeWidth="12" cx="50" cy="50" r="40" fill="transparent" />
             <circle
@@ -293,6 +311,7 @@ export function AnalysisPane() {
             <span className="text-2xl font-bold text-blue-600 leading-none">{analysisResult.score}</span>
             <span className="text-[10px] font-bold text-blue-400">/100</span>
           </div>
+        </div>
         </div>
       </div>
 

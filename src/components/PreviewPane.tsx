@@ -7,7 +7,7 @@ import { useResumeStore } from "@/store/useResumeStore";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
-import { Bold, Italic, Underline, GripVertical, Trash2 } from "lucide-react";
+import { Bold, Italic, Underline, GripVertical, Trash2, Check, Sparkles } from "lucide-react";
 import { Rulers } from "./Ruler";
 
 function FloatingToolbar() {
@@ -161,7 +161,7 @@ function SpacingGap({ property, value, isSpacingMode, asLi, zoom = 1 }: { proper
 }
 
 export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
-  const { resume, updatePersonalInfo, updateSection } = useResumeStore();
+  const { resume, updatePersonalInfo, updateSection, pendingChanges, showOriginal, applyPendingChanges, discardPendingChanges, setShowOriginal } = useResumeStore();
   const [itemHeights, setItemHeights] = useState<Record<string, number>>({});
   const [zoom, setZoom] = useState(1);
   const [isSpacingMode, setIsSpacingMode] = useState(false);
@@ -294,6 +294,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   };
 
   const handleDescBlur = (sectionId: string, itemId: string, descIndex: number, e: React.FocusEvent<HTMLElement>) => {
+    if (pendingChanges) return;
     const section = resume.sections.find(s => s.id === sectionId);
     if (!section) return;
     
@@ -310,6 +311,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   };
 
   const handleItemBlur = (sectionId: string, itemId: string, field: string, e: React.FocusEvent<HTMLElement>) => {
+    if (pendingChanges) return;
     const section = resume.sections.find(s => s.id === sectionId);
     if (!section) return;
     const newItems = section.items.map(item => item.id === itemId ? { ...item, [field]: e.currentTarget.textContent || '' } : item);
@@ -317,19 +319,37 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   };
 
   const handleSectionTitleBlur = (sectionId: string, e: React.FocusEvent<HTMLElement>) => {
+    if (pendingChanges) return;
     updateSection(sectionId, { title: e.currentTarget.textContent || '' });
   };
 
   const handlePersonalInfoBlur = (field: keyof typeof resume.personalInfo, e: React.FocusEvent<HTMLElement>) => {
+    if (pendingChanges) return;
     updatePersonalInfo({ [field]: e.currentTarget.textContent || '' });
   };
 
 
 
-  const editableClass = "hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors inline-block min-w-[20px]";
-  const editableListClass = "hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors";
+  const isEditable = !pendingChanges;
+  const editableClass = isEditable ? "hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors inline-block min-w-[20px]" : "inline-block min-w-[20px]";
+  const editableListClass = isEditable ? "hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors" : "";
 
-  const { personalInfo, settings } = resume;
+  const displayResume = (pendingChanges && !showOriginal) ? { ...resume, ...pendingChanges } : resume;
+  const { personalInfo, settings } = displayResume;
+  
+  const isPersonalInfoChanged = !showOriginal && pendingChanges?.personalInfo && 
+    JSON.stringify(pendingChanges.personalInfo) !== JSON.stringify(resume.personalInfo);
+
+  const getFieldHighlight = (field: keyof typeof resume.personalInfo) => {
+    if (showOriginal || !pendingChanges?.personalInfo) return '';
+    const originalValue = resume.personalInfo[field];
+    const newValue = pendingChanges.personalInfo[field];
+    if (newValue !== undefined && newValue !== originalValue) {
+      return 'bg-green-200 text-green-900 rounded-sm outline outline-1 outline-green-400 px-0.5 transition-colors';
+    }
+    return '';
+  };
+
   const typography = {
     fontFamily: settings.typography?.fontFamily || "'Times New Roman', Times, serif",
     titleSize: settings.typography?.titleSize || 28,
@@ -343,12 +363,12 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   const spacing = { ...defaultSpacing, ...(settings.spacing || {}) };
 
   const contactItems: React.ReactNode[] = [];
-  if (personalInfo.email) contactItems.push(<span key="email" className={editableClass} contentEditable suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('email', e)}>{personalInfo.email}</span>);
-  if (personalInfo.phone) contactItems.push(<span key="phone" className={editableClass} contentEditable suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('phone', e)}>{personalInfo.phone}</span>);
-  if (personalInfo.location) contactItems.push(<span key="loc" className={editableClass} contentEditable suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('location', e)}>{personalInfo.location}</span>);
-  if (personalInfo.linkedin) contactItems.push(<a key="lin" href={personalInfo.linkedin.startsWith('http') ? personalInfo.linkedin : `https://${personalInfo.linkedin}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">LinkedIn</a>);
-  if (personalInfo.website) contactItems.push(<a key="web" href={personalInfo.website.startsWith('http') ? personalInfo.website : `https://${personalInfo.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Portfolio</a>);
-  if (personalInfo.github) contactItems.push(<a key="git" href={personalInfo.github.startsWith('http') ? personalInfo.github : `https://${personalInfo.github}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">GitHub</a>);
+  if (personalInfo.email) contactItems.push(<span key="email" className={`${editableClass} ${getFieldHighlight('email')}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('email', e)}>{personalInfo.email}</span>);
+  if (personalInfo.phone) contactItems.push(<span key="phone" className={`${editableClass} ${getFieldHighlight('phone')}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('phone', e)}>{personalInfo.phone}</span>);
+  if (personalInfo.location) contactItems.push(<span key="loc" className={`${editableClass} ${getFieldHighlight('location')}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('location', e)}>{personalInfo.location}</span>);
+  if (personalInfo.linkedin) contactItems.push(<a key="lin" href={personalInfo.linkedin.startsWith('http') ? personalInfo.linkedin : `https://${personalInfo.linkedin}`} target="_blank" rel="noopener noreferrer" className={`text-blue-600 hover:underline ${getFieldHighlight('linkedin')}`}>LinkedIn</a>);
+  if (personalInfo.website) contactItems.push(<a key="web" href={personalInfo.website.startsWith('http') ? personalInfo.website : `https://${personalInfo.website}`} target="_blank" rel="noopener noreferrer" className={`text-blue-600 hover:underline ${getFieldHighlight('website')}`}>Portfolio</a>);
+  if (personalInfo.github) contactItems.push(<a key="git" href={personalInfo.github.startsWith('http') ? personalInfo.github : `https://${personalInfo.github}`} target="_blank" rel="noopener noreferrer" className={`text-blue-600 hover:underline ${getFieldHighlight('github')}`}>GitHub</a>);
 
   const wInches = pageSize === 'A4' ? 8.27 : 8.5;
   const hInches = pageSize === 'A4' ? 11.69 : pageSize === 'Legal' ? 14 : 11;
@@ -364,11 +384,13 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     const textAlignmentClass = photoDataUrl ? (isPhotoLeft ? 'text-right' : 'text-left') : 'text-center';
     const flexAlignmentClass = photoDataUrl ? (isPhotoLeft ? 'justify-end' : 'justify-start') : 'justify-center';
     
+    const highlightClass = isPersonalInfoChanged ? 'bg-green-100/50 outline outline-1 outline-green-400 rounded-md p-1 transition-all' : '';
+    
     elements.push({
       id: 'personal-info',
       type: 'header',
       content: (
-        <div key="header" data-measure-id="personal-info" className="w-full">
+        <div key="header" data-measure-id="personal-info" className={`w-full`}>
           <div className={`flex items-start justify-between w-full ${isPhotoLeft ? 'flex-row-reverse' : 'flex-row'}`}>
             <div className={`flex-1 ${textAlignmentClass}`}>
               <h1 
@@ -381,7 +403,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                   }
                 }}
               >
-                <span className="outline-none min-w-[20px] inline-block" contentEditable suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('name', e)}>
+                <span className={`outline-none min-w-[20px] inline-block ${getFieldHighlight('name')}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handlePersonalInfoBlur('name', e)}>
                   {personalInfo.name}
                 </span>
               </h1>
@@ -429,10 +451,16 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     });
   }
 
-  const sortedSections = [...resume.sections].sort((a, b) => a.order - b.order);
+  const sortedSections = [...displayResume.sections].sort((a, b) => a.order - b.order);
   let isFirstSection = true;
   sortedSections.forEach(section => {
     if (section.items.length === 0) return;
+
+    const originalSection = resume.sections.find(s => s.id === section.id);
+    const isSectionChanged = pendingChanges?.sections && 
+      JSON.stringify(section) !== JSON.stringify(originalSection);
+    // We only use sectionHighlightClass for summary since it's a single item block
+    const sectionHighlightClass = isSectionChanged ? 'bg-green-100/50 outline outline-1 outline-green-400 rounded-md p-1 transition-all' : '';
 
     elements.push({
       id: `section-title-${section.id}`,
@@ -441,7 +469,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
         <div key={`section-title-wrapper-${section.id}`} data-measure-id={`section-title-${section.id}`}>
           {!isFirstSection && <SpacingGap zoom={zoom} property="sectionGap" value={spacing.sectionGap} isSpacingMode={isSpacingMode} />}
           <h2 className="font-bold uppercase tracking-widest text-black border-b border-black pb-1" style={{ fontSize: `${typography.headingSize}px` }}>
-            <span className={`${editableClass} block w-full`} contentEditable suppressContentEditableWarning onBlur={(e) => handleSectionTitleBlur(section.id, e)}>
+            <span className={`${editableClass} block w-full`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleSectionTitleBlur(section.id, e)}>
               {section.title}
             </span>
           </h2>
@@ -456,10 +484,10 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
         id: `item-${section.items[0].id}`,
         type: 'item',
         content: (
-          <p key={`item-${section.items[0].id}`} data-measure-id={`item-${section.items[0].id}`} className="pb-4 text-black" style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
+          <p key={`item-${section.items[0].id}`} data-measure-id={`item-${section.items[0].id}`} className={`text-black ${sectionHighlightClass}`} style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
             <span 
               className={`${editableClass} block w-full`}
-              contentEditable 
+              contentEditable={isEditable} 
               suppressContentEditableWarning 
               onBlur={(e) => handleDescBlur(section.id, section.items[0].id, 0, e)}
               dangerouslySetInnerHTML={{ __html: section.items[0].description[0] || '' }} 
@@ -471,6 +499,21 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     }
 
     section.items.forEach((item, index) => {
+      const originalItem = originalSection?.items.find(i => i.id === item.id);
+      const isNewItem = pendingChanges?.sections && !originalItem;
+      const highlightStr = 'bg-green-100/50 outline outline-1 outline-green-400 rounded-sm transition-all';
+      
+      const itemHighlightClass = isNewItem ? highlightStr : '';
+
+      const line1Field = section.type === 'projects' ? 'title' : (item.subtitle ? 'subtitle' : 'title');
+      const line2Field = section.type === 'projects' ? 'subtitle' : (item.subtitle ? 'title' : 'subtitle');
+      
+      const line1Highlight = (pendingChanges?.sections && !isNewItem && item[line1Field] !== originalItem?.[line1Field]) ? highlightStr : '';
+      const line2Highlight = (pendingChanges?.sections && !isNewItem && item[line2Field] !== originalItem?.[line2Field]) ? highlightStr : '';
+      const locationHighlight = (pendingChanges?.sections && !isNewItem && item.location !== originalItem?.location) ? highlightStr : '';
+      const dateHighlight = (pendingChanges?.sections && !isNewItem && (item.startDate !== originalItem?.startDate || item.endDate !== originalItem?.endDate)) ? highlightStr : '';
+      const isDescChanged = (i: number) => pendingChanges?.sections && !isNewItem && item.description[i] !== originalItem?.description[i];
+
       elements.push({
         id: `item-${item.id}`,
         type: 'item',
@@ -478,7 +521,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
           <div 
             key={`item-${item.id}`} 
             data-measure-id={`item-${item.id}`} 
-            className={`group relative transition-colors duration-300 ${draggedItem?.sectionId === section.id && draggedItem?.index === index ? 'opacity-50 bg-slate-50/50 outline-dashed outline-2 outline-blue-400 rounded-sm outline-offset-4' : ''}`}
+            className={`group relative transition-colors duration-300 ${draggedItem?.sectionId === section.id && draggedItem?.index === index ? 'opacity-50 bg-slate-50/50 outline-dashed outline-2 outline-blue-400 rounded-sm outline-offset-4' : ''} ${itemHighlightClass}`}
             draggable={draggableItem === item.id}
             onDragStart={(e) => handleDragStart(e, section.id, index)}
             onDragEnter={(e) => handleDragEnter(e, section.id, index)}
@@ -494,10 +537,8 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
             </div>
             {(() => {
               const line1Text = section.type === 'projects' ? item.title : (item.subtitle || item.title);
-              const line1Field = section.type === 'projects' ? 'title' : (item.subtitle ? 'subtitle' : 'title');
               
               const line2Text = section.type === 'projects' ? item.subtitle : (item.subtitle ? item.title : '');
-              const line2Field = section.type === 'projects' ? 'subtitle' : (item.subtitle ? 'title' : 'subtitle');
 
               const validDesc = item.description.map((desc, i) => ({ desc, i })).filter(({ desc }) => desc.replace(/<[^>]*>?/gm, '').trim() !== '');
               const hasHeader = line1Text || line2Text || item.location || item.startDate || item.endDate;
@@ -508,11 +549,11 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                     <>
                       {(line1Text || item.location) && (
                         <div className="flex justify-between items-baseline text-black">
-                          <span className={`font-bold ${editableClass} flex-1 mr-4`} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, line1Field, e)} style={{ fontSize: `${typography.headingSize}px` }}>
+                          <span className={`font-bold ${editableClass} flex-1 mr-4 ${line1Highlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, line1Field, e)} style={{ fontSize: `${typography.headingSize}px` }}>
                             {line1Text}
                           </span>
                           <span className="font-bold shrink-0 text-right text-black" style={{ fontSize: `${typography.headingSize}px` }}>
-                            {item.location ? <span className={editableClass} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'location', e)}>{item.location}</span> : null}
+                            {item.location ? <span className={`${editableClass} ${locationHighlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'location', e)}>{item.location}</span> : null}
                           </span>
                         </div>
                       )}
@@ -520,13 +561,13 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                         <>
                           {(line1Text || item.location) && <SpacingGap zoom={zoom} property="lineGap" value={spacing.lineGap} isSpacingMode={isSpacingMode} />}
                           <div className="flex justify-between items-baseline text-black">
-                            <div className={`italic ${editableClass} flex-1 mr-4`} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, line2Field, e)} style={{ fontSize: `${typography.bodySize}px` }}>
+                            <div className={`italic ${editableClass} flex-1 mr-4 ${line2Highlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, line2Field, e)} style={{ fontSize: `${typography.bodySize}px` }}>
                               {line2Text}
                             </div>
                             <span className="italic shrink-0 text-right text-black" style={{ fontSize: `${typography.bodySize}px` }}>
-                              {item.startDate ? <span className={editableClass} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'startDate', e)}>{item.startDate}</span> : null}
+                              {item.startDate ? <span className={`${editableClass} ${dateHighlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'startDate', e)}>{item.startDate}</span> : null}
                               {item.startDate && item.endDate ? ' – ' : ''}
-                              {item.endDate ? <span className={editableClass} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'endDate', e)}>{item.endDate}</span> : null}
+                              {item.endDate ? <span className={`${editableClass} ${dateHighlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'endDate', e)}>{item.endDate}</span> : null}
                             </span>
                           </div>
                         </>
@@ -536,22 +577,22 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                     <>
                       {(line1Text || item.location || item.startDate || item.endDate) && (
                         <div className="flex justify-between items-baseline text-black">
-                          <span className={`font-bold ${editableClass} flex-1 mr-4`} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, line1Field, e)} style={{ fontSize: `${typography.headingSize}px` }}>
+                          <span className={`font-bold ${editableClass} flex-1 mr-4 ${line1Highlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, line1Field, e)} style={{ fontSize: `${typography.headingSize}px` }}>
                             {line1Text}
                           </span>
                           <span className="italic text-gray-700 shrink-0 text-right" style={{ fontSize: `${typography.bodySize}px` }}>
-                            {item.location ? <span className={editableClass} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'location', e)}>{item.location}</span> : null}
+                            {item.location ? <span className={`${editableClass} ${locationHighlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'location', e)}>{item.location}</span> : null}
                             {item.location && (item.startDate || item.endDate) ? ' | ' : ''}
-                            {item.startDate ? <span className={editableClass} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'startDate', e)}>{item.startDate}</span> : null}
+                            {item.startDate ? <span className={`${editableClass} ${dateHighlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'startDate', e)}>{item.startDate}</span> : null}
                             {item.startDate && item.endDate ? ' – ' : ''}
-                            {item.endDate ? <span className={editableClass} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'endDate', e)}>{item.endDate}</span> : null}
+                            {item.endDate ? <span className={`${editableClass} ${dateHighlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, 'endDate', e)}>{item.endDate}</span> : null}
                           </span>
                         </div>
                       )}
                       {line2Text && (
                         <>
                           {(line1Text || item.location || item.startDate || item.endDate) && <SpacingGap zoom={zoom} property="lineGap" value={spacing.lineGap} isSpacingMode={isSpacingMode} />}
-                          <div className={`italic text-black ${editableClass} block w-full`} contentEditable suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, line2Field, e)} style={{ fontSize: `${typography.bodySize}px` }}>
+                          <div className={`italic text-black ${editableClass} block w-full ${line2Highlight}`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleItemBlur(section.id, item.id, line2Field, e)} style={{ fontSize: `${typography.bodySize}px` }}>
                             {line2Text}
                           </div>
                         </>
@@ -565,8 +606,8 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                         {validDesc.map(({ desc, i }, idx) => (
                           <React.Fragment key={i}>
                             <li 
-                              className={editableListClass}
-                              contentEditable 
+                              className={`${editableListClass} ${isDescChanged(i) ? highlightStr : ''}`}
+                              contentEditable={isEditable} 
                               suppressContentEditableWarning 
                               onBlur={(e) => handleDescBlur(section.id, item.id, i, e)}
                               dangerouslySetInnerHTML={{ __html: desc }} 
@@ -673,7 +714,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   return (
     <section className="flex-1 h-full bg-muted overflow-y-auto flex flex-col items-center relative" id="preview-container" onScroll={handleContainerScroll}>
       {/* Zoom Controls (Sticky Top) */}
-      <div className="sticky top-0 w-full z-50 pointer-events-none" style={{ height: 0 }}>
+      <div className="sticky top-0 w-full z-[999] pointer-events-none" style={{ height: 0 }}>
         <div 
           className={`absolute pointer-events-auto bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm rounded-full px-4 py-1.5 flex items-center gap-4 text-slate-700 transition-all ${
             showRuler ? "top-4 left-4" : "top-4 left-1/2 -translate-x-1/2"
@@ -694,6 +735,8 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
           </button>
         </div>
       </div>
+
+
 
       <div className="pt-16 pb-16 px-8 flex flex-col items-center w-full">
         <FloatingToolbar />
@@ -741,6 +784,41 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
 
       <div className="fixed bottom-6 right-8 bg-slate-900/80 backdrop-blur-md text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl z-50 pointer-events-none transition-all">
         Page {currentPageNum} of {pages.length}
+      </div>
+
+      {/* Changes Controls (Sticky Bottom) */}
+      <div className="sticky bottom-8 w-full z-[999] pointer-events-none flex justify-center pb-6 mt-4">
+        {pendingChanges && (
+          <div className="pointer-events-auto bg-white/95 backdrop-blur-sm border-2 border-blue-200 shadow-xl shadow-blue-500/10 rounded-full px-4 py-2 flex items-center gap-4 transition-all w-max mx-auto shrink-0 h-fit">
+            <div className="flex items-center bg-slate-100 rounded-full p-1 shrink-0">
+              <button 
+                onClick={() => setShowOriginal(true)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 ${showOriginal ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Original
+              </button>
+              <button 
+                onClick={() => setShowOriginal(false)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1 shrink-0 ${!showOriginal ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Fix
+              </button>
+            </div>
+            <div className="w-px h-6 bg-slate-200 mx-1 shrink-0" />
+            <button 
+              onClick={discardPendingChanges}
+              className="px-4 py-1.5 rounded-full text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+            >
+              Discard
+            </button>
+            <button 
+              onClick={applyPendingChanges}
+              className="px-4 py-1.5 rounded-full text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all flex items-center gap-1 shrink-0"
+            >
+              <Check className="w-4 h-4" /> Accept
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

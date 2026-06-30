@@ -22,9 +22,10 @@ export default function EditorPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>("editor");
   const [leftPaneWidth, setLeftPaneWidth] = useState(600);
+  const [middlePaneWidth, setMiddlePaneWidth] = useState(400);
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { setResume, initBlankResume } = useResumeStore();
+  const { setResume, initBlankResume, analysisMode, isChatOpen } = useResumeStore();
 
   useEffect(() => {
     async function loadResume() {
@@ -65,6 +66,8 @@ export default function EditorPage() {
     if (savedTab) setActiveTab(savedTab);
     const savedWidth = localStorage.getItem("cv_leftPaneWidth");
     if (savedWidth) setLeftPaneWidth(parseInt(savedWidth, 10));
+    const savedMiddleWidth = localStorage.getItem("cv_middlePaneWidth");
+    if (savedMiddleWidth) setMiddlePaneWidth(parseInt(savedMiddleWidth, 10));
 
     loadResume();
   }, [params.id, setResume, initBlankResume, router, toast]);
@@ -93,6 +96,34 @@ export default function EditorPage() {
       document.body.style.cursor = 'default';
       setLeftPaneWidth(finalWidth => {
         localStorage.setItem("cv_leftPaneWidth", finalWidth.toString());
+        return finalWidth;
+      });
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'col-resize';
+  };
+
+  const handleMiddleDrag = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = middlePaneWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      let newWidth = startWidth + (moveEvent.clientX - startX);
+      const minW = 250;
+      const maxW = 800;
+      newWidth = Math.max(minW, Math.min(newWidth, maxW));
+      setMiddlePaneWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = 'default';
+      setMiddlePaneWidth(finalWidth => {
+        localStorage.setItem("cv_middlePaneWidth", finalWidth.toString());
         return finalWidth;
       });
     };
@@ -159,7 +190,26 @@ export default function EditorPage() {
       </div>
       
       {/* 3rd Pane: AI Chat */}
-      {activeTab === "analysis" && <AiChatPane />}
+      {isChatOpen && (
+        <div className="relative shrink-0 h-full bg-white z-0 overflow-hidden border-r" style={{ width: isMounted ? middlePaneWidth : 400 }}>
+          <div
+            className="flex flex-col h-full"
+            style={{
+              width: isMounted && middlePaneWidth < 400 ? 400 : '100%',
+              zoom: isMounted && middlePaneWidth < 400 ? middlePaneWidth / 400 : 1
+            }}
+          >
+            <AiChatPane />
+          </div>
+          {/* Drag Handle for Middle Pane */}
+          <div 
+            className="absolute right-[-4px] top-0 bottom-0 w-[8px] cursor-col-resize hover:bg-blue-500/50 transition-colors z-50 group flex items-center justify-center"
+            onMouseDown={handleMiddleDrag}
+          >
+            <div className="w-[2px] h-8 bg-slate-300 group-hover:bg-blue-600 rounded-full" />
+          </div>
+        </div>
+      )}
       
       <PreviewPane showRuler={activeTab === "settings"} />
       

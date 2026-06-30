@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Resume, DocumentSettings, Section, AnalysisResult, AnalysisMode } from '@/types/resume';
+import { Resume, DocumentSettings, Section, AnalysisResult, AnalysisMode, ChatMessage } from '@/types/resume';
 
 interface ResumeStore {
   resume: Resume;
@@ -23,8 +23,16 @@ interface ResumeStore {
   setAnalysisMode: (mode: AnalysisMode) => void;
   activeAnalysisStep: string | null;
   setActiveAnalysisStep: (stepId: string | null) => void;
+  isChatOpen: boolean;
+  setIsChatOpen: (isOpen: boolean) => void;
   pendingChanges: Partial<Resume> | null;
   setPendingChanges: (changes: Partial<Resume> | null) => void;
+  showOriginal: boolean;
+  setShowOriginal: (show: boolean) => void;
+  chatMessages: ChatMessage[];
+  setChatMessages: (messages: ChatMessage[]) => void;
+  applyPendingChanges: () => void;
+  discardPendingChanges: () => void;
 }
 
 const defaultResume: Resume = {
@@ -41,66 +49,7 @@ const defaultResume: Resume = {
     website: 'https://portfolio',
     github: 'https://github.com/',
   },
-  sections: [
-    {
-      id: 'summary-1',
-      type: 'summary',
-      title: 'Professional Summary',
-      order: 0,
-      items: [{
-        id: 'item-summary-1',
-        title: '',
-        description: ['Junior Frontend Developer with a 3.77 GPA and proven experience building and testing web applications...'],
-        order: 0
-      }]
-    },
-    {
-      id: 'exp-1',
-      type: 'experience',
-      title: 'Experience',
-      order: 0,
-      items: [
-        {
-          id: 'item-1',
-          title: 'Senior Software Engineer',
-          subtitle: 'Tech Company Inc',
-          startDate: 'Jan 2020',
-          endDate: 'Present',
-          location: 'City, State',
-          description: [
-            'Developed and maintained core web applications using React and Node.js.',
-            'Improved application performance by 30% through code optimization.',
-          ],
-          order: 0,
-        }
-      ]
-    },
-    {
-      id: 'proj-1',
-      type: 'projects',
-      title: 'Projects',
-      order: 1,
-      items: []
-    },
-    {
-      id: 'edu-1',
-      type: 'education',
-      title: 'Education',
-      order: 2,
-      items: [
-        {
-          id: 'item-edu-1',
-          title: 'B.S. Computer Science',
-          subtitle: 'University of Technology',
-          startDate: '2016',
-          endDate: '2020',
-          location: 'City, State',
-          description: ['Graduated with Honors'],
-          order: 0,
-        }
-      ]
-    }
-  ],
+  sections: [],
   settings: {
     pageSize: 'Letter',
     margin: { top: 1, bottom: 1, left: 1, right: 1 },
@@ -125,36 +74,7 @@ const blankResume: Resume = {
     website: '',
     github: '',
   },
-  sections: [
-    {
-      id: 'summary-1',
-      type: 'summary',
-      title: 'Professional Summary',
-      order: 0,
-      items: []
-    },
-    {
-      id: 'exp-1',
-      type: 'experience',
-      title: 'Experience',
-      order: 0,
-      items: []
-    },
-    {
-      id: 'proj-1',
-      type: 'projects',
-      title: 'Projects',
-      order: 1,
-      items: []
-    },
-    {
-      id: 'edu-1',
-      type: 'education',
-      title: 'Education',
-      order: 2,
-      items: []
-    }
-  ],
+  sections: [],
   settings: {
     pageSize: 'Letter',
     margin: { top: 1, bottom: 1, left: 1, right: 1 },
@@ -170,7 +90,19 @@ export const useResumeStore = create<ResumeStore>((set) => ({
   tailoringJob: null,
   isDirty: false,
   setIsDirty: (dirty) => set({ isDirty: dirty }),
-  setResume: (resume) => set({ resume, isDirty: false, analysisResult: resume.analysisResult || null }),
+  setResume: (resume) => set({ 
+    resume, 
+    isDirty: false, 
+    analysisResult: resume.analysisResult || null,
+    analysisMode: 'inactive',
+    activeAnalysisStep: null,
+    isChatOpen: false,
+    pendingChanges: null,
+    showOriginal: false,
+    chatMessages: [
+      { role: "ai", text: "Hi there! I can help you improve your resume. Ask me for feedback or improvements, and I can directly edit your resume." }
+    ]
+  }),
   setTailoringJob: (job) => set({ tailoringJob: job }),
   // AI Analysis Init
   analysisResult: null,
@@ -183,8 +115,44 @@ export const useResumeStore = create<ResumeStore>((set) => ({
   setAnalysisMode: (mode) => set({ analysisMode: mode }),
   activeAnalysisStep: null,
   setActiveAnalysisStep: (stepId) => set({ activeAnalysisStep: stepId }),
+  isChatOpen: false,
+  setIsChatOpen: (isOpen) => set({ isChatOpen: isOpen }),
   pendingChanges: null,
-  setPendingChanges: (changes) => set({ pendingChanges: changes }),
+  setPendingChanges: (changes) => set({ pendingChanges: changes, showOriginal: false }),
+  showOriginal: false,
+  setShowOriginal: (show) => set({ showOriginal: show }),
+  chatMessages: [
+    { role: "ai", text: "Hi there! I can help you improve your resume. Ask me for feedback or improvements, and I can directly edit your resume." }
+  ],
+  setChatMessages: (messages) => set({ chatMessages: messages }),
+  applyPendingChanges: () => set((state) => {
+    if (!state.pendingChanges) return state;
+    
+    // Mark last AI message as accepted
+    const newMessages = [...state.chatMessages];
+    if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'ai') {
+      newMessages[newMessages.length - 1] = { ...newMessages[newMessages.length - 1], status: 'accepted' };
+    }
+    
+    return {
+      resume: {
+        ...state.resume,
+        ...state.pendingChanges
+      },
+      pendingChanges: null,
+      showOriginal: false,
+      isDirty: true,
+      chatMessages: newMessages
+    };
+  }),
+  discardPendingChanges: () => set((state) => {
+    // Mark last AI message as rejected
+    const newMessages = [...state.chatMessages];
+    if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'ai') {
+      newMessages[newMessages.length - 1] = { ...newMessages[newMessages.length - 1], status: 'rejected' };
+    }
+    return { pendingChanges: null, showOriginal: false, chatMessages: newMessages };
+  }),
   // Methods
   updatePersonalInfo: (info) =>
     set((state) => ({

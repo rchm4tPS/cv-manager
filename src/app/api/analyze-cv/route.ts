@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     // Note: Assuming ai.models.generateContent is the correct method from @google/genai
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: prompt,
       config: {
         temperature: 0.2, // Low temperature for more consistent, analytical output

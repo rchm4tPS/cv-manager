@@ -10,6 +10,7 @@ import { supabaseApi } from "@/lib/supabase-api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, User, FileText, Briefcase, GraduationCap, GripVertical, Trash2, UploadCloud, FolderDot, Sparkles, Plus, Star, Loader2 } from "lucide-react";
+import { SectionType } from "@/types/resume";
 
 const inputClass = "w-full h-9 rounded-md border border-slate-200 bg-white shadow-sm px-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
 
@@ -1037,9 +1038,6 @@ function CustomSectionForm({ sectionId }: { sectionId: string }) {
       <div className="space-y-1.5 mb-6">
         <div className="flex justify-between items-center">
           <label className="text-xs font-semibold text-muted-foreground">Section Title</label>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => deleteSection(section.id)}>
-            <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete Section
-          </Button>
         </div>
         <input 
           type="text" 
@@ -1161,7 +1159,13 @@ export const SECTION_ICONS: Record<string, React.ElementType> = {
 
 export function EditorPane() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["personal", "summary", "experience", "education", "projects"]));
-  const { resume, addSection } = useResumeStore();
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const { resume, addSection, deleteSection } = useResumeStore();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const toggleSection = (id: string) => {
     const newExpanded = new Set(expandedSections);
@@ -1182,6 +1186,36 @@ export function EditorPane() {
       case "custom": return <CustomSectionForm sectionId={section.id} />;
       default: return null;
     }
+  };
+
+  const PREDEFINED_TYPES: SectionType[] = ['summary', 'experience', 'education', 'skills', 'projects'];
+  const currentTypes = new Set(resume.sections.map(s => s.type));
+  const missingTypes = PREDEFINED_TYPES.filter(type => !currentTypes.has(type));
+
+  const handleAddPredefinedSection = (type: SectionType) => {
+    const id = `${type}-${Date.now()}`;
+    let title = type.charAt(0).toUpperCase() + type.slice(1);
+    if (type === 'summary') title = 'Professional Summary';
+    
+    addSection({
+      id,
+      type: type,
+      title,
+      order: resume.sections.length,
+      items: (type === 'summary' || type === 'skills') ? [{
+        id: `item-${Date.now()}`,
+        title: '',
+        subtitle: '',
+        startDate: '',
+        endDate: '',
+        location: '',
+        description: type === 'summary' ? ['Write your summary here...'] : ['Skill 1, Skill 2'],
+        order: 0
+      }] : []
+    });
+    const newExpanded = new Set(expandedSections);
+    newExpanded.add(id);
+    setExpandedSections(newExpanded);
   };
 
   const handleAddCustomSection = () => {
@@ -1242,7 +1276,21 @@ export function EditorPane() {
                 <Icon className="w-5 h-5 text-blue-600" />
                 <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">{section.title}</h2>
               </div>
-              {expandedSections.has(section.id) ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirmId(section.id);
+                  }}
+                  title="Delete Section"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                {expandedSections.has(section.id) ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+              </div>
             </div>
             <div className={`grid transition-all duration-300 ease-in-out ${expandedSections.has(section.id) ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
               <div className="overflow-hidden">
@@ -1255,7 +1303,22 @@ export function EditorPane() {
         );
       })}
 
-      <div className="pt-6">
+      <div className="pt-6 space-y-3">
+        {missingTypes.map(type => {
+          const Icon = SECTION_ICONS[type] || Plus;
+          let label = type.charAt(0).toUpperCase() + type.slice(1);
+          if (type === 'summary') label = 'Professional Summary';
+          return (
+            <Button 
+              key={type}
+              variant="outline" 
+              className="w-full border-dashed border-2 py-6 text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 bg-transparent transition-all" 
+              onClick={() => handleAddPredefinedSection(type)}
+            >
+              <Icon className="w-5 h-5 mr-2" /> Add {label} Section
+            </Button>
+          );
+        })}
         <Button 
           variant="outline" 
           className="w-full border-dashed border-2 py-6 text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 bg-transparent transition-all" 
@@ -1264,6 +1327,32 @@ export function EditorPane() {
           <Plus className="w-5 h-5 mr-2" /> Add Custom Section
         </Button>
       </div>
+
+      {deleteConfirmId && mounted && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999] p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 space-y-4">
+            <h3 className="text-xl font-bold text-slate-900">Delete Section?</h3>
+            <p className="text-slate-500">
+              Are you sure you want to delete this section? This action cannot be undone, though you can add a new section later.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  deleteSection(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
     </aside>
   );
