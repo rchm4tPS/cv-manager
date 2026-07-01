@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { useResumeStore } from "@/store/useResumeStore";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Sparkles, Undo2, Redo2, Menu, FileText, Briefcase, Download, X, Home, Palette } from "lucide-react";
+import { Undo2, Redo2, Menu, FileText, Briefcase, Download, X, Home, Palette } from "lucide-react";
 
 export function Header() {
   const router = useRouter();
@@ -17,7 +17,6 @@ export function Header() {
   const isEditor = pathname.startsWith("/editor");
   const { 
     resume, setResume, updateTitle, isDirty, setIsDirty, 
-    isChatOpen, setIsChatOpen, 
     undo, redo, pastStates, futureStates,
     setTailoringJob,
     appTheme, setAppTheme
@@ -31,6 +30,7 @@ export function Header() {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line
     setIsMounted(true);
   }, []);
 

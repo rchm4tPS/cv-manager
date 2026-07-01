@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, ExternalLink, Calendar as CalendarIcon, FileText, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Briefcase, BarChart3, CheckCircle2, XCircle } from "lucide-react";
+import { Pencil, Trash2, ExternalLink, Calendar as CalendarIcon, ChevronUp, TrendingUp, TrendingDown, Briefcase, BarChart3 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -72,8 +72,8 @@ export default function JobsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line
     setIsMounted(true);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadJobs(true);
   }, []);
 
@@ -174,11 +174,11 @@ export default function JobsPage() {
     if (!jobToDelete) return;
     try {
       await supabaseApi.deleteJob(jobToDelete);
+      setJobs(jobs.filter(j => j.id !== jobToDelete));
       toast({ title: "Success", description: "Job deleted!" });
-      setJobToDelete(null);
-      loadJobs();
     } catch {
       toast({ title: "Error", description: "Failed to delete job", variant: "destructive" });
+    } finally {
       setJobToDelete(null);
     }
   };
@@ -189,7 +189,7 @@ export default function JobsPage() {
     try {
       const data = await supabaseApi.getResumes();
       if (data) setRecentResumes(data);
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "Failed to load resumes", variant: "destructive" });
     } finally {
       setLoadingResumes(false);

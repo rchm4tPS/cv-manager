@@ -9,8 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 export function AiChatPane() {
   const { 
     resume, 
-    analysisMode, 
-    setAnalysisMode, 
     activeAnalysisStep,
     pendingChanges,
     setPendingChanges,
@@ -19,10 +17,8 @@ export function AiChatPane() {
     setIsChatOpen,
     activeSuggestionIdForChat,
     setActiveSuggestionIdForChat,
-    updateSuggestionStatus,
     pendingAiMessage,
     setPendingAiMessage,
-    recordSuggestionDecision,
     acceptAiChanges,
     discardAiChanges
   } = useResumeStore();
@@ -38,24 +34,21 @@ export function AiChatPane() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (pendingAiMessage) {
-      const msg = pendingAiMessage;
-      setPendingAiMessage(null);
-      handleSend(msg);
-    }
-  }, [pendingAiMessage]);
+
 
   useEffect(() => {
     scrollToBottom();
   }, [chatMessages, isProcessing]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const executeAiRequest = async (historyToUse: any[]) => {
     setIsProcessing(true);
     try {
@@ -75,6 +68,7 @@ export function AiChatPane() {
 
       const data = await res.json();
       if (data.success && data.data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const aiMsg: any = { role: "ai", text: data.data.reply, thought: data.data.thought };
         if (data.data.proposedChanges && Object.keys(data.data.proposedChanges).length > 0) {
           aiMsg.status = 'pending';
@@ -87,14 +81,16 @@ export function AiChatPane() {
         
         // Mark any previous 'pending' messages in this conversation as 'superseded' 
         // so we don't have dangling loaders.
-        const updatedHistory = historyToUse.map(m => 
-          (m as any).status === 'pending' ? { ...m, status: 'superseded' } : m
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updatedHistory = historyToUse.map((m: any) => 
+          m.status === 'pending' ? { ...m, status: 'superseded' } : m
         );
         
         setChatMessages([...updatedHistory, aiMsg]);
       } else {
         throw new Error(data.error || "Failed to get AI response");
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error(error);
       toast({
@@ -120,6 +116,16 @@ export function AiChatPane() {
     
     executeAiRequest(newMessages);
   };
+
+  useEffect(() => {
+    if (pendingAiMessage) {
+      const msg = pendingAiMessage;
+      setPendingAiMessage(null);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      handleSend(msg);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAiMessage]);
 
   const handleRetry = () => {
     if (isProcessing) return;

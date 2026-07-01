@@ -79,11 +79,14 @@ ${resume.rejectedSuggestions?.length ? `The user REJECTED these past suggestions
       if (parsed.proposedChanges.sections.length > 0 && parsed.proposedChanges.sections.length < resume.sections.length) {
         // Merge them into the original sections array
         const mergedSections = resume.sections.map(originalSection => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const modifiedSection = parsed.proposedChanges.sections.find((s: any) => s.id === originalSection.id);
           if (modifiedSection) {
             // Also merge items if the AI only returned modified items
             if (Array.isArray(modifiedSection.items) && modifiedSection.items.length < originalSection.items.length) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const mergedItems = originalSection.items.map((originalItem: any) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const modifiedItem = modifiedSection.items.find((i: any) => i.id === originalItem.id);
                 return modifiedItem ? { ...originalItem, ...modifiedItem } : originalItem;
               });
@@ -97,8 +100,10 @@ ${resume.rejectedSuggestions?.length ? `The user REJECTED these past suggestions
       }
 
       // Defensive pass: Ensure all items have a valid description array
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       parsed.proposedChanges.sections.forEach((section: any) => {
         if (Array.isArray(section.items)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           section.items.forEach((item: any) => {
             if (item.description === undefined || item.description === null) {
               item.description = [];
@@ -114,6 +119,7 @@ ${resume.rejectedSuggestions?.length ? `The user REJECTED these past suggestions
 
     return NextResponse.json({ success: true, data: parsed });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("AI Fix Error:", error);
     return NextResponse.json(

@@ -24,7 +24,7 @@ export default function EditorPage() {
   const [middlePaneWidth, setMiddlePaneWidth] = useState(400);
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { setResume, initBlankResume, analysisMode, isChatOpen, setIsChatOpen, setTailoringJob } = useResumeStore();
+  const { setResume, initBlankResume, isChatOpen, setIsChatOpen, setTailoringJob } = useResumeStore();
 
   useEffect(() => {
     async function loadResume() {
@@ -72,7 +72,7 @@ export default function EditorPage() {
     if (savedMiddleWidth) setMiddlePaneWidth(parseInt(savedMiddleWidth, 10));
 
     loadResume();
-  }, [params.id, setResume, initBlankResume, router, toast]);
+  }, [params.id, setResume, initBlankResume, router, toast, setTailoringJob]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);

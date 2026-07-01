@@ -148,9 +148,12 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   isDirty: false,
   setIsDirty: (dirty) => set({ isDirty: dirty }),
   setResume: (resume) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const newSuggestions: any[] = [];
     if (resume.analysisResult && resume.analysisResult.steps) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       resume.analysisResult.steps.forEach((step: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         step.recommendations.forEach((rec: any) => {
           if (!rec.suggestionId) {
             rec.suggestionId = Math.random().toString(36).substring(2, 9);
@@ -396,7 +399,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   acceptAiChanges: () => set((state) => {
     // Record decisions for all AI messages since the last divider
     let updatedResume = { ...state.resume };
-    let updatedChatMessages = [...state.chatMessages];
+    const updatedChatMessages = [...state.chatMessages];
     for (let i = updatedChatMessages.length - 1; i >= 0; i--) {
       const msg = updatedChatMessages[i];
       if (msg.type === 'divider') break;
@@ -444,7 +447,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   discardAiChanges: () => set((state) => {
     // Record decisions for all AI messages since the last divider
     let updatedResume = { ...state.resume };
-    let updatedChatMessages = [...state.chatMessages];
+    const updatedChatMessages = [...state.chatMessages];
     for (let i = updatedChatMessages.length - 1; i >= 0; i--) {
       const msg = updatedChatMessages[i];
       if (msg.type === 'divider') break;

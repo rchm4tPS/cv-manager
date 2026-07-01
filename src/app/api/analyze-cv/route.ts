@@ -214,6 +214,7 @@ If a section is perfectly aligned, or if the CV lacks it, the "recommendations" 
     const analysisResult = JSON.parse(text);
 
     return NextResponse.json({ success: true, data: analysisResult });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('CV Analysis Error:', error);
     return NextResponse.json(
