@@ -32,6 +32,7 @@ export interface Job {
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,6 +72,7 @@ export default function JobsPage() {
   };
 
   useEffect(() => {
+    setIsMounted(true);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadJobs(true);
   }, []);
@@ -251,6 +253,8 @@ export default function JobsPage() {
     }
   };
 
+  if (!isMounted) return null;
+
   return (
     <div className="flex-1 p-8 bg-muted/10 overflow-y-auto">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -327,15 +331,15 @@ export default function JobsPage() {
               <div className="mt-4 flex items-center gap-3">
                 {metrics.momGrowth > 0 ? (
                   <div className="bg-emerald-100 text-emerald-700 flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm">
-                    <TrendingUp className="w-4 h-4" /> +{metrics.momGrowth}%
+                    <TrendingUp className="w-4 h-4" /> <span>+{metrics.momGrowth}%</span>
                   </div>
                 ) : metrics.momGrowth < 0 ? (
                   <div className="bg-red-100 text-red-700 flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm">
-                    <TrendingDown className="w-4 h-4" /> {metrics.momGrowth}%
+                    <TrendingDown className="w-4 h-4" /> <span>{metrics.momGrowth}%</span>
                   </div>
                 ) : (
                   <div className="bg-slate-100 text-slate-700 flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm">
-                    <span className="w-4 h-4 flex items-center justify-center">-</span> 0%
+                    <span className="w-4 h-4 flex items-center justify-center">-</span> <span>0%</span>
                   </div>
                 )}
                 <span className="text-sm font-medium text-slate-500">month-over-month</span>

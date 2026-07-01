@@ -182,10 +182,10 @@ function PersonalInfoForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="contact" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 @md:grid-cols-2 gap-6">
         <div className="space-y-1.5">
@@ -383,18 +383,18 @@ function SummaryForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="summary" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <div className="space-y-2 relative">
         <div className="flex justify-between items-center">
           <label className="text-xs font-semibold text-muted-foreground">{summarySection.title}</label>
           <div className="flex gap-2">
-            <Button size="sm" className="bg-blue-500 hover:bg-blue-600 rounded-full h-8 px-4 text-xs font-semibold flex gap-1.5">
+            {/* <Button size="sm" className="bg-blue-500 hover:bg-blue-600 rounded-full h-8 px-4 text-xs font-semibold flex gap-1.5">
               <Sparkles className="w-3.5 h-3.5" /> Write with AI
-            </Button>
+            </Button> */}
             <Button 
               size="sm" 
               variant="outline"
@@ -530,10 +530,10 @@ function WorkExperienceForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="experience" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <Button variant="outline" size="sm" className="rounded-full px-4 text-xs font-semibold border-muted-foreground/30" onClick={addItem}>
         + Add Work Experience
@@ -576,11 +576,11 @@ function WorkExperienceForm() {
           <div className="pt-4 space-y-3">
             <div className="flex flex-wrap justify-between items-center gap-2">
               <label className="text-sm font-semibold text-foreground">Responsibilities:</label>
-              <div className="flex gap-2">
+              {/* <div className="flex gap-2">
                 <Button size="sm" className="bg-blue-500 hover:bg-blue-600 rounded-full h-8 px-4 text-xs font-semibold flex gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" /> Write with AI
                 </Button>
-              </div>
+              </div> */}
             </div>
 
             <div className={`mt-2 space-y-2 p-2 -mx-2 rounded-xl transition-colors duration-300 ${draggedDesc?.itemId === item.id ? 'bg-slate-200/60 shadow-inner' : 'bg-transparent'}`}>
@@ -737,10 +737,10 @@ function ProjectExperienceForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="projects" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <Button variant="outline" size="sm" className="rounded-full px-4 text-xs font-semibold border-muted-foreground/30" onClick={addItem}>
         + Add Project Experience
@@ -881,10 +881,10 @@ function EducationForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="education" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <Button variant="outline" size="sm" className="rounded-full px-4 text-xs font-semibold border-muted-foreground/30" onClick={addItem}>
         + Add Education
@@ -999,10 +999,10 @@ function SkillsForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="skills" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <Button variant="outline" size="sm" className="rounded-full px-4 text-xs font-semibold border-muted-foreground/30" onClick={addItem}>
         + Add Skill Category
