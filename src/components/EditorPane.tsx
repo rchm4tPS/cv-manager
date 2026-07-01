@@ -9,9 +9,58 @@ import { useResumeStore } from "@/store/useResumeStore";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, User, FileText, Briefcase, GraduationCap, GripVertical, Trash2, UploadCloud, FolderDot, Sparkles, Plus, Star, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User, FileText, Briefcase, GraduationCap, GripVertical, Trash2, UploadCloud, FolderDot, Sparkles, Plus, Star, Loader2, Check, X } from "lucide-react";
+import { SectionType } from "@/types/resume";
 
 const inputClass = "w-full h-9 rounded-md border border-slate-200 bg-white shadow-sm px-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
+
+function SuggestionChecklist({ targetSection }: { targetSection: string }) {
+  const { editorSuggestions, updateSuggestionStatus } = useResumeStore();
+  const suggestions = editorSuggestions.filter(s => s.targetSection === targetSection && s.status === 'pending');
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex >= suggestions.length && suggestions.length > 0) {
+      setCurrentIndex(suggestions.length - 1);
+    }
+  }, [suggestions.length, currentIndex]);
+
+  if (suggestions.length === 0) return null;
+
+  const s = suggestions[currentIndex] || suggestions[0];
+
+  return (
+    <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm relative">
+      {suggestions.length > 1 && (
+        <div className="absolute top-3 right-3 flex items-center gap-1">
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-blue-600 hover:bg-blue-100" onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))} disabled={currentIndex === 0}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-xs font-medium text-blue-600">{currentIndex + 1} of {suggestions.length}</span>
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-blue-600 hover:bg-blue-100" onClick={() => setCurrentIndex(prev => Math.min(suggestions.length - 1, prev + 1))} disabled={currentIndex === suggestions.length - 1}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+      <div className="flex justify-between items-start mb-2">
+        <h4 className="font-semibold text-blue-800 flex items-center gap-1.5 pr-20">
+          <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+          {s.title}
+        </h4>
+      </div>
+      <div className="text-blue-900 mb-1"><span className="font-medium">Issue:</span> {s.whatToImprove}</div>
+      <div className="text-blue-800 mb-3"><span className="font-medium">Fix:</span> {s.whyAndHowToFix}</div>
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => updateSuggestionStatus(s.id, 'rejected')}>
+          <X className="w-3 h-3 mr-1" /> Dismiss
+        </Button>
+        <Button size="sm" variant="default" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => updateSuggestionStatus(s.id, 'accepted')}>
+          <Check className="w-3 h-3 mr-1" /> Done
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function PersonalInfoForm() {
   const { resume, updatePersonalInfo } = useResumeStore();
@@ -120,6 +169,7 @@ function PersonalInfoForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="contact" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -320,6 +370,7 @@ function SummaryForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="summary" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -466,6 +517,7 @@ function WorkExperienceForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="experience" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -520,7 +572,7 @@ function WorkExperienceForm() {
             </div>
 
             <div className={`mt-2 space-y-2 p-2 -mx-2 rounded-xl transition-colors duration-300 ${draggedDesc?.itemId === item.id ? 'bg-slate-200/60 shadow-inner' : 'bg-transparent'}`}>
-              {item.description.map((desc, dIdx) => {
+              {(Array.isArray(item.description) ? item.description : (typeof item.description === 'string' ? [item.description] : [])).map((desc, dIdx) => {
                 const isDragging = draggedDesc?.itemId === item.id && draggedDesc?.index === dIdx;
                 return (
                 <div 
@@ -537,7 +589,17 @@ function WorkExperienceForm() {
                   <textarea 
                     className="text-sm flex-1 leading-relaxed text-slate-700 bg-transparent resize-none outline-none h-20 cursor-text" 
                     value={desc.replace(/<[^>]+>/g, '')} 
-                    onChange={(e) => updateDesc(item.id, dIdx, e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes('\n')) {
+                        const parts = val.split('\n');
+                        const newDesc = [...item.description];
+                        newDesc.splice(dIdx, 1, ...parts);
+                        updateItem(item.id, 'description', newDesc);
+                      } else {
+                        updateDesc(item.id, dIdx, val);
+                      }
+                    }}
                   />
                   <div className="flex flex-col gap-1 shrink-0 items-center justify-center h-full">
                     <Button variant="ghost" size="icon" className="w-6 h-6"><Sparkles className="w-3 h-3 text-blue-500" /></Button>
@@ -662,6 +724,7 @@ function ProjectExperienceForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="projects" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -706,7 +769,7 @@ function ProjectExperienceForm() {
             </div>
 
             <div className={`mt-2 space-y-2 p-2 -mx-2 rounded-xl transition-colors duration-300 ${draggedDesc?.itemId === item.id ? 'bg-slate-200/60 shadow-inner' : 'bg-transparent'}`}>
-              {item.description.map((desc, dIdx) => {
+              {(Array.isArray(item.description) ? item.description : (typeof item.description === 'string' ? [item.description] : [])).map((desc, dIdx) => {
                 const isDragging = draggedDesc?.itemId === item.id && draggedDesc?.index === dIdx;
                 return (
                 <div 
@@ -723,7 +786,17 @@ function ProjectExperienceForm() {
                   <textarea 
                     className="text-sm flex-1 leading-relaxed text-slate-700 bg-transparent resize-none outline-none h-16 cursor-text" 
                     value={desc.replace(/<[^>]+>/g, '')} 
-                    onChange={(e) => updateDesc(item.id, dIdx, e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes('\n')) {
+                        const parts = val.split('\n');
+                        const newDesc = [...item.description];
+                        newDesc.splice(dIdx, 1, ...parts);
+                        updateItem(item.id, 'description', newDesc);
+                      } else {
+                        updateDesc(item.id, dIdx, val);
+                      }
+                    }}
                   />
                   <div className="flex flex-col gap-1 shrink-0 items-center justify-center h-full">
                     <Button variant="ghost" size="icon" className="w-6 h-6"><Sparkles className="w-3 h-3 text-blue-500" /></Button>
@@ -795,6 +868,7 @@ function EducationForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="education" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -838,6 +912,29 @@ function EducationForm() {
         </div>
       ))}
     </div>
+  );
+}
+
+function SkillsInput({ item, updateItem }: { item: any, updateItem: (id: string, field: string, val: string[]) => void }) {
+  const [localValue, setLocalValue] = useState(item.description.join(", "));
+
+  useEffect(() => {
+    const currentTrimmed = localValue.split(',').map((s: string) => s.trim()).filter(Boolean).join(',');
+    const newTrimmed = item.description.map((s: string) => s.trim()).filter(Boolean).join(',');
+    if (currentTrimmed !== newTrimmed) {
+      setLocalValue(item.description.join(", "));
+    }
+  }, [item.description, localValue]);
+
+  return (
+    <textarea 
+      className="w-full h-20 rounded-md border border-slate-200 bg-white shadow-sm p-3 text-sm resize-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+      value={localValue}
+      onChange={(e) => {
+        setLocalValue(e.target.value);
+        updateItem(item.id, 'description', e.target.value.split(",").map(s => s.trim()));
+      }}
+    />
   );
 }
 
@@ -889,6 +986,7 @@ function SkillsForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="skills" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -915,11 +1013,7 @@ function SkillsForm() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">Skills (comma separated)</label>
-              <textarea 
-                className="w-full h-20 rounded-md border border-slate-200 bg-white shadow-sm p-3 text-sm resize-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-                value={item.description.join(", ")}
-                onChange={(e) => updateItem(item.id, 'description', e.target.value.split(",").map(s => s.trim()))}
-              />
+              <SkillsInput item={item} updateItem={updateItem} />
             </div>
           </div>
         ))}
@@ -1014,12 +1108,10 @@ function CustomSectionForm({ sectionId }: { sectionId: string }) {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="custom" />
       <div className="space-y-1.5 mb-6">
         <div className="flex justify-between items-center">
           <label className="text-xs font-semibold text-muted-foreground">Section Title</label>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => deleteSection(section.id)}>
-            <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete Section
-          </Button>
         </div>
         <input 
           type="text" 
@@ -1084,7 +1176,7 @@ function CustomSectionForm({ sectionId }: { sectionId: string }) {
               <label className="text-sm font-semibold text-foreground">Description:</label>
             </div>
             <div className={`mt-2 space-y-2 p-2 -mx-2 rounded-xl transition-colors duration-300 ${draggedDesc?.itemId === item.id ? 'bg-slate-200/60 shadow-inner' : 'bg-transparent'}`}>
-              {item.description.map((desc, dIdx) => {
+              {(Array.isArray(item.description) ? item.description : (typeof item.description === 'string' ? [item.description] : [])).map((desc, dIdx) => {
                 const isDragging = draggedDesc?.itemId === item.id && draggedDesc?.index === dIdx;
                 return (
                 <div 
@@ -1101,7 +1193,17 @@ function CustomSectionForm({ sectionId }: { sectionId: string }) {
                   <textarea 
                     className="text-sm flex-1 leading-relaxed text-slate-700 bg-transparent resize-none outline-none h-20 cursor-text" 
                     value={desc.replace(/<[^>]+>/g, '')} 
-                    onChange={(e) => updateDesc(item.id, dIdx, e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes('\n')) {
+                        const parts = val.split('\n');
+                        const newDesc = [...item.description];
+                        newDesc.splice(dIdx, 1, ...parts);
+                        updateItem(item.id, 'description', newDesc);
+                      } else {
+                        updateDesc(item.id, dIdx, val);
+                      }
+                    }}
                   />
                   <div className="flex flex-col gap-1 shrink-0 items-center justify-center h-full">
                     <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => deleteDesc(item.id, dIdx)}><Trash2 className="w-3 h-3 text-destructive" /></Button>
@@ -1131,7 +1233,13 @@ export const SECTION_ICONS: Record<string, React.ElementType> = {
 
 export function EditorPane() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["personal", "summary", "experience", "education", "projects"]));
-  const { resume, addSection } = useResumeStore();
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const { resume, addSection, deleteSection } = useResumeStore();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const toggleSection = (id: string) => {
     const newExpanded = new Set(expandedSections);
@@ -1152,6 +1260,36 @@ export function EditorPane() {
       case "custom": return <CustomSectionForm sectionId={section.id} />;
       default: return null;
     }
+  };
+
+  const PREDEFINED_TYPES: SectionType[] = ['summary', 'experience', 'education', 'skills', 'projects'];
+  const currentTypes = new Set(resume.sections.map(s => s.type));
+  const missingTypes = PREDEFINED_TYPES.filter(type => !currentTypes.has(type));
+
+  const handleAddPredefinedSection = (type: SectionType) => {
+    const id = `${type}-${Date.now()}`;
+    let title = type.charAt(0).toUpperCase() + type.slice(1);
+    if (type === 'summary') title = 'Professional Summary';
+    
+    addSection({
+      id,
+      type: type,
+      title,
+      order: resume.sections.length,
+      items: (type === 'summary' || type === 'skills') ? [{
+        id: `item-${Date.now()}`,
+        title: '',
+        subtitle: '',
+        startDate: '',
+        endDate: '',
+        location: '',
+        description: type === 'summary' ? ['Write your summary here...'] : ['Skill 1, Skill 2'],
+        order: 0
+      }] : []
+    });
+    const newExpanded = new Set(expandedSections);
+    newExpanded.add(id);
+    setExpandedSections(newExpanded);
   };
 
   const handleAddCustomSection = () => {
@@ -1212,7 +1350,21 @@ export function EditorPane() {
                 <Icon className="w-5 h-5 text-blue-600" />
                 <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">{section.title}</h2>
               </div>
-              {expandedSections.has(section.id) ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirmId(section.id);
+                  }}
+                  title="Delete Section"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                {expandedSections.has(section.id) ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+              </div>
             </div>
             <div className={`grid transition-all duration-300 ease-in-out ${expandedSections.has(section.id) ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
               <div className="overflow-hidden">
@@ -1225,7 +1377,22 @@ export function EditorPane() {
         );
       })}
 
-      <div className="pt-6">
+      <div className="pt-6 space-y-3">
+        {missingTypes.map(type => {
+          const Icon = SECTION_ICONS[type] || Plus;
+          let label = type.charAt(0).toUpperCase() + type.slice(1);
+          if (type === 'summary') label = 'Professional Summary';
+          return (
+            <Button 
+              key={type}
+              variant="outline" 
+              className="w-full border-dashed border-2 py-6 text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 bg-transparent transition-all" 
+              onClick={() => handleAddPredefinedSection(type)}
+            >
+              <Icon className="w-5 h-5 mr-2" /> Add {label} Section
+            </Button>
+          );
+        })}
         <Button 
           variant="outline" 
           className="w-full border-dashed border-2 py-6 text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 bg-transparent transition-all" 
@@ -1234,6 +1401,32 @@ export function EditorPane() {
           <Plus className="w-5 h-5 mr-2" /> Add Custom Section
         </Button>
       </div>
+
+      {deleteConfirmId && mounted && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999] p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 space-y-4">
+            <h3 className="text-xl font-bold text-slate-900">Delete Section?</h3>
+            <p className="text-slate-500">
+              Are you sure you want to delete this section? This action cannot be undone, though you can add a new section later.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  deleteSection(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
     </aside>
   );

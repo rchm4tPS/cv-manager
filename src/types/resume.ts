@@ -5,6 +5,7 @@ export interface Resume {
   personalInfo: PersonalInfo;
   sections: Section[];
   settings: DocumentSettings;
+  analysisResult?: AnalysisResult;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,4 +73,43 @@ export interface DocumentSettings {
     lineGap: number;       // Space between line 1 and line 2 of an item
     bulletGap: number;     // Space between description bullet points
   };
+}
+
+export type AnalysisMode = 'inactive' | 'overview' | 'step-detail' | 'chat';
+
+export interface AnalysisRecommendation {
+  title: string;
+  whatToImprove: string;
+  whyAndHowToFix: string;
+  suggestionId?: string;
+  status?: 'pending' | 'accepted' | 'rejected';
+  targetSection?: string;
+}
+
+export interface EditorSuggestion extends AnalysisRecommendation {
+  id: string;
+  stepId: string;
+  targetSection: string;
+  status: 'pending' | 'accepted' | 'rejected';
+}
+
+export interface AnalysisStep {
+  id: string; // 'contact' | 'summary' | 'experiences' | 'format'
+  title: string;
+  status: string; // e.g., '1 recommended improvement'
+  overallAssessment: string;
+  workingWell: string[];
+  recommendations: AnalysisRecommendation[];
+}
+
+export interface AnalysisResult {
+  score: number;
+  steps: AnalysisStep[];
+}
+
+export interface ChatMessage {
+  role: "user" | "ai";
+  text: string;
+  thought?: string;
+  status?: 'pending' | 'accepted' | 'rejected';
 }
