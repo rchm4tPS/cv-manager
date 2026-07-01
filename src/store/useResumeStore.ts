@@ -33,6 +33,11 @@ interface ResumeStore {
   setChatMessages: (messages: ChatMessage[]) => void;
   applyPendingChanges: () => void;
   discardPendingChanges: () => void;
+  // History State
+  pastStates: Resume[];
+  futureStates: Resume[];
+  undo: () => void;
+  redo: () => void;
 }
 
 const defaultResume: Resume = {
@@ -85,7 +90,31 @@ const blankResume: Resume = {
   updatedAt: new Date().toISOString(),
 };
 
-export const useResumeStore = create<ResumeStore>((set) => ({
+export const useResumeStore = create<ResumeStore>((set, get) => {
+  let debounceTimeout: NodeJS.Timeout;
+  let lastSnapshot: Resume | null = null;
+
+  const setWithHistory = (updater: (state: ResumeStore) => Partial<ResumeStore>) => {
+    const currentState = get();
+    if (!lastSnapshot) lastSnapshot = currentState.resume;
+    
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+      const s = get();
+      // Only push to pastStates if the resume actually changed
+      if (JSON.stringify(lastSnapshot) !== JSON.stringify(s.resume)) {
+        set((prevState) => ({
+          pastStates: [...prevState.pastStates, lastSnapshot!].slice(-20),
+          futureStates: []
+        }));
+      }
+      lastSnapshot = null;
+    }, 1000);
+    
+    set(updater(currentState));
+  };
+
+  return {
   resume: defaultResume,
   tailoringJob: null,
   isDirty: false,
@@ -139,6 +168,8 @@ export const useResumeStore = create<ResumeStore>((set) => ({
         ...state.resume,
         ...state.pendingChanges
       },
+      pastStates: [...state.pastStates, state.resume].slice(-20),
+      futureStates: [],
       pendingChanges: null,
       showOriginal: false,
       isDirty: true,
@@ -155,7 +186,7 @@ export const useResumeStore = create<ResumeStore>((set) => ({
   }),
   // Methods
   updatePersonalInfo: (info) =>
-    set((state) => ({
+    setWithHistory((state) => ({
       resume: {
         ...state.resume,
         personalInfo: { ...state.resume.personalInfo, ...info },
@@ -163,7 +194,7 @@ export const useResumeStore = create<ResumeStore>((set) => ({
       isDirty: true,
     })),
   updateSettings: (settings) =>
-    set((state) => ({
+    setWithHistory((state) => ({
       resume: {
         ...state.resume,
         settings: { ...state.resume.settings, ...settings },
@@ -171,7 +202,7 @@ export const useResumeStore = create<ResumeStore>((set) => ({
       isDirty: true,
     })),
   addSection: (section) =>
-    set((state) => ({
+    setWithHistory((state) => ({
       resume: {
         ...state.resume,
         sections: [...state.resume.sections, section],
@@ -179,7 +210,7 @@ export const useResumeStore = create<ResumeStore>((set) => ({
       isDirty: true,
     })),
   updateSection: (sectionId, data) =>
-    set((state) => ({
+    setWithHistory((state) => ({
       resume: {
         ...state.resume,
         sections: state.resume.sections.map((s) =>
@@ -189,7 +220,7 @@ export const useResumeStore = create<ResumeStore>((set) => ({
       isDirty: true,
     })),
   deleteSection: (sectionId) =>
-    set((state) => ({
+    setWithHistory((state) => ({
       resume: {
         ...state.resume,
         sections: state.resume.sections.filter((s) => s.id !== sectionId),
@@ -197,20 +228,54 @@ export const useResumeStore = create<ResumeStore>((set) => ({
       isDirty: true,
     })),
   reorderSections: (sections) =>
-    set((state) => ({
+    setWithHistory((state) => ({
       resume: {
         ...state.resume,
         sections,
       },
       isDirty: true,
     })),
-  initBlankResume: () => set({ resume: blankResume, isDirty: false }),
+  initBlankResume: () => set({ resume: blankResume, isDirty: false, pastStates: [], futureStates: [] }),
   updateTitle: (title) =>
-    set((state) => ({
+    setWithHistory((state) => ({
       resume: {
         ...state.resume,
         title,
       },
       isDirty: true,
     })),
-}));
+  
+  // History Methods
+  pastStates: [],
+  futureStates: [],
+  undo: () => set((state) => {
+    if (state.pastStates.length === 0) return state;
+    // Commit any pending debounced change if we undo
+    if (lastSnapshot) {
+      clearTimeout(debounceTimeout);
+      lastSnapshot = null;
+    }
+    const previous = state.pastStates[state.pastStates.length - 1];
+    return {
+      resume: previous,
+      pastStates: state.pastStates.slice(0, -1),
+      futureStates: [state.resume, ...state.futureStates],
+      isDirty: true
+    };
+  }),
+  redo: () => set((state) => {
+    if (state.futureStates.length === 0) return state;
+    if (lastSnapshot) {
+      clearTimeout(debounceTimeout);
+      lastSnapshot = null;
+    }
+    const next = state.futureStates[0];
+    return {
+      resume: next,
+      pastStates: [...state.pastStates, state.resume],
+      futureStates: state.futureStates.slice(1),
+      isDirty: true
+    };
+  })
+};
+});

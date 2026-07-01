@@ -143,8 +143,8 @@ export function AnalysisPane() {
           </Button>
         </div>
 
-        {/* Back and Chat Buttons */}
-        <div className="flex justify-center gap-3 mb-4 shrink-0">
+        {/* Back Button */}
+        <div className="flex justify-center mb-4 shrink-0">
           <Button 
             variant="outline" 
             className="bg-white rounded-full text-xs shadow-sm hover:bg-slate-50 transition-colors"
@@ -155,14 +155,6 @@ export function AnalysisPane() {
           >
             <ArrowLeft className="w-3.5 h-3.5 mr-2" />
             Back
-          </Button>
-          <Button 
-            variant="default" 
-            className="bg-blue-600 hover:bg-blue-700 rounded-full text-xs shadow-sm transition-colors"
-            onClick={() => setIsChatOpen(true)}
-          >
-            <Sparkles className="w-3.5 h-3.5 mr-2" />
-            Open AI Chat
           </Button>
         </div>
 
@@ -284,14 +276,6 @@ export function AnalysisPane() {
         </div>
         
         <div className="flex flex-col items-center gap-3 shrink-0">
-          <Button 
-            variant="default" 
-            className="bg-blue-600 hover:bg-blue-700 rounded-full text-xs shadow-sm transition-colors w-full"
-            onClick={() => setIsChatOpen(true)}
-          >
-            <Sparkles className="w-3.5 h-3.5 mr-2" />
-            Open AI Chat
-          </Button>
           <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
           <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
             <circle className="text-slate-100 stroke-current" strokeWidth="12" cx="50" cy="50" r="40" fill="transparent" />

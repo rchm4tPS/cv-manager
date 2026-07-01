@@ -6,7 +6,6 @@ import { EditorPane } from "@/components/EditorPane";
 import { PreviewPane } from "@/components/PreviewPane";
 import { AnalysisPane } from "@/components/AnalysisPane";
 import { SettingsPane } from "@/components/SettingsPane";
-import { AIChatbot } from "@/components/AIChatbot";
 import { AiChatPane } from "@/components/AiChatPane";
 import { useResumeStore } from "@/store/useResumeStore";
 import { supabaseApi } from "@/lib/supabase-api";
@@ -212,9 +211,6 @@ export default function EditorPage() {
       )}
       
       <PreviewPane showRuler={activeTab === "settings"} />
-      
-      {/* Fallback global chatbot for Editor mode if we keep it */}
-      {activeTab !== "analysis" && <AIChatbot />}
     </div>
   );
 }

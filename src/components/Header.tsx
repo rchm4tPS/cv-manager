@@ -6,14 +6,19 @@ import { Button } from "@/components/ui/button";
 import { useResumeStore } from "@/store/useResumeStore";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Sparkles, Undo2, Redo2 } from "lucide-react";
 
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
   const isEditor = pathname.startsWith("/editor");
-  const { resume, setResume, updateTitle, isDirty, setIsDirty } = useResumeStore();
+  const { 
+    resume, setResume, updateTitle, isDirty, setIsDirty, 
+    isChatOpen, setIsChatOpen, 
+    undo, redo, pastStates, futureStates 
+  } = useResumeStore();
   const isLoadingTitle = params?.id && resume.id !== params.id;
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
@@ -26,6 +31,26 @@ export function Header() {
     }
     setIsEditingTitle(false);
   };
+
+  useEffect(() => {
+    if (!isEditor) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z or Cmd+Z for Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      // Ctrl+Y, Cmd+Y, or Ctrl+Shift+Z, Cmd+Shift+Z for Redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEditor, undo, redo]);
 
   const handleSave = async () => {
     try {
@@ -114,6 +139,37 @@ export function Header() {
       <div className="flex items-center gap-2 flex-1 justify-end">
         {isEditor && (
           <>
+            <div className="flex items-center gap-1 mr-4 bg-muted/30 rounded-lg p-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={undo}
+                disabled={pastStates.length === 0}
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 className="w-4 h-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={redo}
+                disabled={futureStates.length === 0}
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <Button 
+              variant={isChatOpen ? "secondary" : "outline"}
+              size="sm" 
+              className="mr-2"
+              onClick={() => setIsChatOpen(!isChatOpen)}
+            >
+              <Sparkles className="w-4 h-4 mr-2" /> AI Assistant
+            </Button>
             <Button variant="outline" size="sm" onClick={() => window.dispatchEvent(new Event('print-resume'))}>Export PDF</Button>
             <Button size="sm" onClick={handleSave} disabled={isSaving || !isDirty}>
               {isSaving ? "Saving..." : "Save"}
