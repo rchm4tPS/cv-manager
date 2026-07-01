@@ -336,7 +336,8 @@ export function AnalysisPane() {
                 </span>
               )}
             </div>
-            <h2 className="text-xl font-bold text-slate-800 break-words leading-tight mb-1">{resume.personalInfo.name} analysis</h2>
+            {/* <h2 className="text-xl font-bold text-slate-800 break-words leading-tight mb-1">{resume.personalInfo.name} analysis</h2> */}
+            <h2 className="text-xl font-bold text-slate-800 break-words leading-tight mb-1">Your CV analysis</h2>
             <p className="text-sm text-slate-500">
               {100 - analysisResult.score} points needed to reach a 100 score.
             </p>
@@ -365,6 +366,25 @@ export function AnalysisPane() {
           </div>
         </div>
         </div>
+      </div>
+
+      <div className="pt-4 border-t border-b pb-4">
+        <Button 
+          className="w-full py-6 rounded-xl text-md" 
+          onClick={runAnalysis} 
+          disabled={analyzeDisabled}
+        >
+          {analyzing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+          {analyzing 
+            ? "Analyzing with AI..." 
+            : !hasMinimalData
+              ? "Add Profile, Summary & Experience first"
+              : hasPendingSuggestions 
+                ? "Review inline suggestions first" 
+                : isCooldownActive 
+                  ? `Wait ${cooldownRemaining}s before re-analyzing` 
+                  : "Re-Analyze CV"}
+        </Button>
       </div>
 
       <div className="text-center max-w-md mx-auto px-2">
@@ -424,24 +444,7 @@ export function AnalysisPane() {
         ))}
       </div>
       
-      <div className="pt-4 border-t pb-8">
-        <Button 
-          className="w-full py-6 rounded-xl text-md" 
-          onClick={runAnalysis} 
-          disabled={analyzeDisabled}
-        >
-          {analyzing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-          {analyzing 
-            ? "Analyzing with AI..." 
-            : !hasMinimalData
-              ? "Add Profile, Summary & Experience first"
-              : hasPendingSuggestions 
-                ? "Review inline suggestions first" 
-                : isCooldownActive 
-                  ? `Wait ${cooldownRemaining}s before re-analyzing` 
-                  : "Re-Analyze CV"}
-        </Button>
-      </div>
+      {/*  */}
     </aside>
   );
 }

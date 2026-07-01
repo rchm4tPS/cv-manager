@@ -915,6 +915,29 @@ function EducationForm() {
   );
 }
 
+function SkillsInput({ item, updateItem }: { item: any, updateItem: (id: string, field: string, val: string[]) => void }) {
+  const [localValue, setLocalValue] = useState(item.description.join(", "));
+
+  useEffect(() => {
+    const currentTrimmed = localValue.split(',').map((s: string) => s.trim()).filter(Boolean).join(',');
+    const newTrimmed = item.description.map((s: string) => s.trim()).filter(Boolean).join(',');
+    if (currentTrimmed !== newTrimmed) {
+      setLocalValue(item.description.join(", "));
+    }
+  }, [item.description, localValue]);
+
+  return (
+    <textarea 
+      className="w-full h-20 rounded-md border border-slate-200 bg-white shadow-sm p-3 text-sm resize-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+      value={localValue}
+      onChange={(e) => {
+        setLocalValue(e.target.value);
+        updateItem(item.id, 'description', e.target.value.split(",").map(s => s.trim()));
+      }}
+    />
+  );
+}
+
 function SkillsForm() {
   const { resume, updateSection, addSection } = useResumeStore();
   const skillsSection = resume.sections.find(s => s.type === "skills");
@@ -990,11 +1013,7 @@ function SkillsForm() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">Skills (comma separated)</label>
-              <textarea 
-                className="w-full h-20 rounded-md border border-slate-200 bg-white shadow-sm p-3 text-sm resize-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-                value={item.description.join(", ")}
-                onChange={(e) => updateItem(item.id, 'description', e.target.value.split(",").map(s => s.trim()))}
-              />
+              <SkillsInput item={item} updateItem={updateItem} />
             </div>
           </div>
         ))}
