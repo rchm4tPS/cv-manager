@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Resume, DocumentSettings, Section, AnalysisResult, AnalysisMode, ChatMessage } from '@/types/resume';
+import { Resume, DocumentSettings, Section, AnalysisResult, AnalysisMode, ChatMessage, EditorSuggestion } from '@/types/resume';
 
 interface ResumeStore {
   resume: Resume;
@@ -31,8 +31,18 @@ interface ResumeStore {
   setShowOriginal: (show: boolean) => void;
   chatMessages: ChatMessage[];
   setChatMessages: (messages: ChatMessage[]) => void;
+  pendingAiMessage: string | null;
+  setPendingAiMessage: (message: string | null) => void;
+  activeSuggestionIdForChat: string | null;
+  setActiveSuggestionIdForChat: (id: string | null) => void;
   applyPendingChanges: () => void;
   discardPendingChanges: () => void;
+  // AI Suggestions Checklist
+  editorSuggestions: EditorSuggestion[];
+  setEditorSuggestions: (suggestions: EditorSuggestion[]) => void;
+  updateSuggestionStatus: (id: string, status: 'accepted' | 'rejected') => void;
+  analysisCooldownUntil: number | null;
+  setAnalysisCooldownUntil: (time: number | null) => void;
   // History State
   pastStates: Resume[];
   futureStates: Resume[];
@@ -119,19 +129,44 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   tailoringJob: null,
   isDirty: false,
   setIsDirty: (dirty) => set({ isDirty: dirty }),
-  setResume: (resume) => set({ 
-    resume, 
-    isDirty: false, 
-    analysisResult: resume.analysisResult || null,
-    analysisMode: 'inactive',
-    activeAnalysisStep: null,
-    isChatOpen: false,
-    pendingChanges: null,
-    showOriginal: false,
-    chatMessages: [
-      { role: "ai", text: "Hi there! I can help you improve your resume. Ask me for feedback or improvements, and I can directly edit your resume." }
-    ]
-  }),
+  setResume: (resume) => {
+    const newSuggestions: any[] = [];
+    if (resume.analysisResult && resume.analysisResult.steps) {
+      resume.analysisResult.steps.forEach((step: any) => {
+        step.recommendations.forEach((rec: any) => {
+          if (!rec.suggestionId) {
+            rec.suggestionId = Math.random().toString(36).substring(2, 9);
+          }
+          newSuggestions.push({
+            id: rec.suggestionId,
+            stepId: step.id,
+            targetSection: rec.targetSection || 'global',
+            title: rec.title,
+            whatToImprove: rec.whatToImprove,
+            whyAndHowToFix: rec.whyAndHowToFix,
+            status: rec.status || 'pending'
+          });
+        });
+      });
+    }
+
+    set({ 
+      resume, 
+      isDirty: false, 
+      analysisResult: resume.analysisResult || null,
+      editorSuggestions: newSuggestions,
+      analysisMode: 'inactive',
+      activeAnalysisStep: null,
+      isChatOpen: false,
+      pendingChanges: null,
+      showOriginal: false,
+      chatMessages: [
+        { role: "ai", text: "Hi there! I can help you improve your resume. Ask me for feedback or improvements, and I can directly edit your resume." }
+      ],
+      pendingAiMessage: null,
+      activeSuggestionIdForChat: null
+    });
+  },
   setTailoringJob: (job) => set({ tailoringJob: job }),
   // AI Analysis Init
   analysisResult: null,
@@ -154,6 +189,10 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
     { role: "ai", text: "Hi there! I can help you improve your resume. Ask me for feedback or improvements, and I can directly edit your resume." }
   ],
   setChatMessages: (messages) => set({ chatMessages: messages }),
+  pendingAiMessage: null,
+  setPendingAiMessage: (message) => set({ pendingAiMessage: message }),
+  activeSuggestionIdForChat: null,
+  setActiveSuggestionIdForChat: (id) => set({ activeSuggestionIdForChat: id }),
   applyPendingChanges: () => set((state) => {
     if (!state.pendingChanges) return state;
     
@@ -184,6 +223,44 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
     }
     return { pendingChanges: null, showOriginal: false, chatMessages: newMessages };
   }),
+  // AI Suggestions Checklist
+  editorSuggestions: [],
+  setEditorSuggestions: (suggestions) => set({ editorSuggestions: suggestions }),
+  updateSuggestionStatus: (id, status) => set((state) => {
+    const newSuggestions = state.editorSuggestions.map(s => s.id === id ? { ...s, status } : s);
+    
+    // Also update the status inside resume.analysisResult to persist it
+    let newAnalysisResult = state.resume.analysisResult;
+    if (newAnalysisResult && newAnalysisResult.steps) {
+      const newSteps = newAnalysisResult.steps.map(step => ({
+        ...step,
+        recommendations: step.recommendations.map(rec => 
+          rec.suggestionId === id ? { ...rec, status } : rec
+        )
+      }));
+      newAnalysisResult = { ...newAnalysisResult, steps: newSteps };
+    }
+
+    // If all suggestions are non-pending, trigger cooldown
+    if (newSuggestions.length > 0 && newSuggestions.every(s => s.status !== 'pending')) {
+      return { 
+        editorSuggestions: newSuggestions,
+        resume: { ...state.resume, analysisResult: newAnalysisResult },
+        analysisResult: newAnalysisResult,
+        isDirty: true,
+        analysisCooldownUntil: Date.now() + 60000 // 1 minute cooldown
+      };
+    }
+    return { 
+      editorSuggestions: newSuggestions,
+      resume: { ...state.resume, analysisResult: newAnalysisResult },
+      analysisResult: newAnalysisResult,
+      isDirty: true
+    };
+  }),
+  analysisCooldownUntil: null,
+  setAnalysisCooldownUntil: (time) => set({ analysisCooldownUntil: time }),
+
   // Methods
   updatePersonalInfo: (info) =>
     setWithHistory((state) => ({

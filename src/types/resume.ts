@@ -81,6 +81,16 @@ export interface AnalysisRecommendation {
   title: string;
   whatToImprove: string;
   whyAndHowToFix: string;
+  suggestionId?: string;
+  status?: 'pending' | 'accepted' | 'rejected';
+  targetSection?: string;
+}
+
+export interface EditorSuggestion extends AnalysisRecommendation {
+  id: string;
+  stepId: string;
+  targetSection: string;
+  status: 'pending' | 'accepted' | 'rejected';
 }
 
 export interface AnalysisStep {

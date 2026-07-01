@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/lib/gemini';
+
+export const maxDuration = 60; // Allow up to 60 seconds for the AI response
 import { Resume } from '@/types/resume';
 
 const SYSTEM_PROMPT = `You are an elite Resume AI Assistant. The user is asking you to fix or improve their CV based on AI recommendations or their own requests.
@@ -85,6 +87,21 @@ export async function POST(req: NextRequest) {
         });
         parsed.proposedChanges.sections = mergedSections;
       }
+
+      // Defensive pass: Ensure all items have a valid description array
+      parsed.proposedChanges.sections.forEach((section: any) => {
+        if (Array.isArray(section.items)) {
+          section.items.forEach((item: any) => {
+            if (item.description === undefined || item.description === null) {
+              item.description = [];
+            } else if (typeof item.description === 'string') {
+              item.description = [item.description];
+            } else if (!Array.isArray(item.description)) {
+              item.description = [];
+            }
+          });
+        }
+      });
     }
 
     return NextResponse.json({ success: true, data: parsed });

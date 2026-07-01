@@ -9,10 +9,58 @@ import { useResumeStore } from "@/store/useResumeStore";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, User, FileText, Briefcase, GraduationCap, GripVertical, Trash2, UploadCloud, FolderDot, Sparkles, Plus, Star, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User, FileText, Briefcase, GraduationCap, GripVertical, Trash2, UploadCloud, FolderDot, Sparkles, Plus, Star, Loader2, Check, X } from "lucide-react";
 import { SectionType } from "@/types/resume";
 
 const inputClass = "w-full h-9 rounded-md border border-slate-200 bg-white shadow-sm px-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
+
+function SuggestionChecklist({ targetSection }: { targetSection: string }) {
+  const { editorSuggestions, updateSuggestionStatus } = useResumeStore();
+  const suggestions = editorSuggestions.filter(s => s.targetSection === targetSection && s.status === 'pending');
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex >= suggestions.length && suggestions.length > 0) {
+      setCurrentIndex(suggestions.length - 1);
+    }
+  }, [suggestions.length, currentIndex]);
+
+  if (suggestions.length === 0) return null;
+
+  const s = suggestions[currentIndex] || suggestions[0];
+
+  return (
+    <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm relative">
+      {suggestions.length > 1 && (
+        <div className="absolute top-3 right-3 flex items-center gap-1">
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-blue-600 hover:bg-blue-100" onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))} disabled={currentIndex === 0}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-xs font-medium text-blue-600">{currentIndex + 1} of {suggestions.length}</span>
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-blue-600 hover:bg-blue-100" onClick={() => setCurrentIndex(prev => Math.min(suggestions.length - 1, prev + 1))} disabled={currentIndex === suggestions.length - 1}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+      <div className="flex justify-between items-start mb-2">
+        <h4 className="font-semibold text-blue-800 flex items-center gap-1.5 pr-20">
+          <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+          {s.title}
+        </h4>
+      </div>
+      <div className="text-blue-900 mb-1"><span className="font-medium">Issue:</span> {s.whatToImprove}</div>
+      <div className="text-blue-800 mb-3"><span className="font-medium">Fix:</span> {s.whyAndHowToFix}</div>
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => updateSuggestionStatus(s.id, 'rejected')}>
+          <X className="w-3 h-3 mr-1" /> Dismiss
+        </Button>
+        <Button size="sm" variant="default" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => updateSuggestionStatus(s.id, 'accepted')}>
+          <Check className="w-3 h-3 mr-1" /> Done
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function PersonalInfoForm() {
   const { resume, updatePersonalInfo } = useResumeStore();
@@ -121,6 +169,7 @@ function PersonalInfoForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="contact" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -321,6 +370,7 @@ function SummaryForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="summary" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -467,6 +517,7 @@ function WorkExperienceForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="experience" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -521,7 +572,7 @@ function WorkExperienceForm() {
             </div>
 
             <div className={`mt-2 space-y-2 p-2 -mx-2 rounded-xl transition-colors duration-300 ${draggedDesc?.itemId === item.id ? 'bg-slate-200/60 shadow-inner' : 'bg-transparent'}`}>
-              {item.description.map((desc, dIdx) => {
+              {(Array.isArray(item.description) ? item.description : (typeof item.description === 'string' ? [item.description] : [])).map((desc, dIdx) => {
                 const isDragging = draggedDesc?.itemId === item.id && draggedDesc?.index === dIdx;
                 return (
                 <div 
@@ -673,6 +724,7 @@ function ProjectExperienceForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="projects" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -717,7 +769,7 @@ function ProjectExperienceForm() {
             </div>
 
             <div className={`mt-2 space-y-2 p-2 -mx-2 rounded-xl transition-colors duration-300 ${draggedDesc?.itemId === item.id ? 'bg-slate-200/60 shadow-inner' : 'bg-transparent'}`}>
-              {item.description.map((desc, dIdx) => {
+              {(Array.isArray(item.description) ? item.description : (typeof item.description === 'string' ? [item.description] : [])).map((desc, dIdx) => {
                 const isDragging = draggedDesc?.itemId === item.id && draggedDesc?.index === dIdx;
                 return (
                 <div 
@@ -816,6 +868,7 @@ function EducationForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="education" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -910,6 +963,7 @@ function SkillsForm() {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="skills" />
       <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -1035,6 +1089,7 @@ function CustomSectionForm({ sectionId }: { sectionId: string }) {
 
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
+      <SuggestionChecklist targetSection="custom" />
       <div className="space-y-1.5 mb-6">
         <div className="flex justify-between items-center">
           <label className="text-xs font-semibold text-muted-foreground">Section Title</label>
@@ -1102,7 +1157,7 @@ function CustomSectionForm({ sectionId }: { sectionId: string }) {
               <label className="text-sm font-semibold text-foreground">Description:</label>
             </div>
             <div className={`mt-2 space-y-2 p-2 -mx-2 rounded-xl transition-colors duration-300 ${draggedDesc?.itemId === item.id ? 'bg-slate-200/60 shadow-inner' : 'bg-transparent'}`}>
-              {item.description.map((desc, dIdx) => {
+              {(Array.isArray(item.description) ? item.description : (typeof item.description === 'string' ? [item.description] : [])).map((desc, dIdx) => {
                 const isDragging = draggedDesc?.itemId === item.id && draggedDesc?.index === dIdx;
                 return (
                 <div 

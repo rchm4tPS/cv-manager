@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/lib/gemini';
 import { Resume } from '@/types/resume';
 
+export const maxDuration = 60; // Allow up to 60 seconds for the AI response
+
 const SYSTEM_PROMPT = `You are an elite Executive Recruiter and ATS (Applicant Tracking System) Specialist. Your objective is to critically analyze the provided CV and provide actionable, high-impact feedback to maximize the candidate's chances of landing interviews.
 
 You will receive the CV data in a structured JSON format. 
@@ -30,7 +32,8 @@ Return your complete analysis strictly as a JSON object matching the following s
         {
           "title": "<Short actionable title>",
           "whatToImprove": "<Description of the specific flaw>",
-          "whyAndHowToFix": "<Concrete explanation on how to improve this specific part>"
+          "whyAndHowToFix": "<Concrete explanation on how to improve this specific part>",
+          "targetSection": "<Strictly one of: 'contact', 'summary', 'experience', 'projects', 'education', 'skills', 'custom'>"
         }
       ]
     },

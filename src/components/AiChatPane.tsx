@@ -18,7 +18,12 @@ export function AiChatPane() {
     discardPendingChanges,
     chatMessages,
     setChatMessages,
-    setIsChatOpen
+    setIsChatOpen,
+    activeSuggestionIdForChat,
+    setActiveSuggestionIdForChat,
+    updateSuggestionStatus,
+    pendingAiMessage,
+    setPendingAiMessage
   } = useResumeStore();
   
   const { toast } = useToast();
@@ -32,14 +37,26 @@ export function AiChatPane() {
   };
 
   useEffect(() => {
+    if (pendingAiMessage) {
+      const msg = pendingAiMessage;
+      setPendingAiMessage(null);
+      handleSend(msg);
+    }
+  }, [pendingAiMessage]);
+
+  useEffect(() => {
     scrollToBottom();
   }, [chatMessages, isProcessing]);
-  const handleSend = async () => {
-    if (!input.trim() || isProcessing) return;
 
-    const newMessages = [...chatMessages, { role: "user" as const, text: input }];
+  const handleSend = async (overrideMessage?: string) => {
+    const textToSend = typeof overrideMessage === 'string' ? overrideMessage : input;
+    if (!textToSend.trim() || isProcessing) return;
+
+    const newMessages = [...chatMessages, { role: "user" as const, text: textToSend }];
     setChatMessages(newMessages);
-    setInput("");
+    if (!overrideMessage || typeof overrideMessage !== 'string') {
+      setInput("");
+    }
     setIsProcessing(true);
 
     try {
@@ -83,11 +100,19 @@ export function AiChatPane() {
 
   const handleAccept = () => {
     applyPendingChanges();
+    if (activeSuggestionIdForChat) {
+      updateSuggestionStatus(activeSuggestionIdForChat, 'accepted');
+      setActiveSuggestionIdForChat(null);
+    }
     toast({ title: "Changes Accepted", description: "Your resume has been updated." });
   };
 
   const handleDiscard = () => {
     discardPendingChanges();
+    if (activeSuggestionIdForChat) {
+      updateSuggestionStatus(activeSuggestionIdForChat, 'rejected');
+      setActiveSuggestionIdForChat(null);
+    }
     toast({ title: "Changes Discarded" });
   };
 
@@ -101,6 +126,7 @@ export function AiChatPane() {
           className="text-red-500 hover:text-red-600 hover:bg-red-50"
           onClick={() => {
             if (pendingChanges) discardPendingChanges();
+            if (activeSuggestionIdForChat) setActiveSuggestionIdForChat(null);
             setIsChatOpen(false);
           }}
         >

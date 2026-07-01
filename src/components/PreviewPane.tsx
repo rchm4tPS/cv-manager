@@ -9,6 +9,7 @@ import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import { Bold, Italic, Underline, GripVertical, Trash2, Check, Sparkles } from "lucide-react";
 import { Rulers } from "./Ruler";
+import { useToast } from "@/hooks/use-toast";
 
 function FloatingToolbar() {
   const [toolbarPos, setToolbarPos] = useState<{ x: number, y: number } | null>(null);
@@ -161,7 +162,12 @@ function SpacingGap({ property, value, isSpacingMode, asLi, zoom = 1 }: { proper
 }
 
 export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
-  const { resume, updatePersonalInfo, updateSection, pendingChanges, showOriginal, applyPendingChanges, discardPendingChanges, setShowOriginal } = useResumeStore();
+  const { 
+    resume, updatePersonalInfo, updateSection, pendingChanges, 
+    showOriginal, applyPendingChanges, discardPendingChanges, setShowOriginal,
+    activeSuggestionIdForChat, updateSuggestionStatus, setActiveSuggestionIdForChat
+  } = useResumeStore();
+  const { toast } = useToast();
   const [itemHeights, setItemHeights] = useState<Record<string, number>>({});
   const [zoom, setZoom] = useState(1);
   const [isSpacingMode, setIsSpacingMode] = useState(false);
@@ -175,6 +181,24 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   });
 
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+
+  const handleAccept = () => {
+    applyPendingChanges();
+    if (activeSuggestionIdForChat) {
+      updateSuggestionStatus(activeSuggestionIdForChat, 'accepted');
+      setActiveSuggestionIdForChat(null);
+    }
+    toast({ title: "Changes Accepted", description: "Your resume has been updated." });
+  };
+
+  const handleDiscard = () => {
+    discardPendingChanges();
+    if (activeSuggestionIdForChat) {
+      updateSuggestionStatus(activeSuggestionIdForChat, 'rejected');
+      setActiveSuggestionIdForChat(null);
+    }
+    toast({ title: "Changes Discarded" });
+  };
 
   useEffect(() => {
     async function loadPhoto() {
@@ -540,7 +564,8 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
               
               const line2Text = section.type === 'projects' ? item.subtitle : (item.subtitle ? item.title : '');
 
-              const validDesc = item.description.map((desc, i) => ({ desc, i })).filter(({ desc }) => desc.replace(/<[^>]*>?/gm, '').trim() !== '');
+              const descArray = Array.isArray(item.description) ? item.description : (typeof item.description === 'string' ? [item.description] : []);
+              const validDesc = descArray.map((desc, i) => ({ desc: String(desc || ''), i })).filter(({ desc }) => desc.replace(/<[^>]*>?/gm, '').trim() !== '');
               const hasHeader = line1Text || line2Text || item.location || item.startDate || item.endDate;
 
               return (
@@ -602,20 +627,37 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                   {validDesc.length > 0 && (
                     <>
                       {hasHeader && <SpacingGap zoom={zoom} property="lineGap" value={spacing.lineGap} isSpacingMode={isSpacingMode} />}
-                      <ul className="list-disc list-outside ml-5 text-black" style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
-                        {validDesc.map(({ desc, i }, idx) => (
-                          <React.Fragment key={i}>
-                            <li 
-                              className={`${editableListClass} ${isDescChanged(i) ? highlightStr : ''}`}
-                              contentEditable={isEditable} 
-                              suppressContentEditableWarning 
-                              onBlur={(e) => handleDescBlur(section.id, item.id, i, e)}
-                              dangerouslySetInnerHTML={{ __html: desc }} 
-                            />
-                            {idx < validDesc.length - 1 && <SpacingGap zoom={zoom} property="bulletGap" value={spacing.bulletGap} isSpacingMode={isSpacingMode} asLi />}
-                          </React.Fragment>
-                        ))}
-                      </ul>
+                      {section.type === 'skills' ? (
+                        <div className="text-black" style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
+                          {validDesc.map(({ desc, i }, idx) => (
+                            <React.Fragment key={i}>
+                              <span 
+                                className={`${isEditable ? 'hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors inline' : 'inline'} ${isDescChanged(i) ? highlightStr : ''}`}
+                                contentEditable={isEditable} 
+                                suppressContentEditableWarning 
+                                onBlur={(e) => handleDescBlur(section.id, item.id, i, e)}
+                                dangerouslySetInnerHTML={{ __html: desc }} 
+                              />
+                              {idx < validDesc.length - 1 && <span>, </span>}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      ) : (
+                        <ul className="list-disc list-outside ml-5 text-black" style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
+                          {validDesc.map(({ desc, i }, idx) => (
+                            <React.Fragment key={i}>
+                              <li 
+                                className={`${editableListClass} ${isDescChanged(i) ? highlightStr : ''}`}
+                                contentEditable={isEditable} 
+                                suppressContentEditableWarning 
+                                onBlur={(e) => handleDescBlur(section.id, item.id, i, e)}
+                                dangerouslySetInnerHTML={{ __html: desc }} 
+                              />
+                              {idx < validDesc.length - 1 && <SpacingGap zoom={zoom} property="bulletGap" value={spacing.bulletGap} isSpacingMode={isSpacingMode} asLi />}
+                            </React.Fragment>
+                          ))}
+                        </ul>
+                      )}
                     </>
                   )}
                 </>
@@ -806,13 +848,13 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
             </div>
             <div className="w-px h-6 bg-slate-200 mx-1 shrink-0" />
             <button 
-              onClick={discardPendingChanges}
+              onClick={handleDiscard}
               className="px-4 py-1.5 rounded-full text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
             >
               Discard
             </button>
             <button 
-              onClick={applyPendingChanges}
+              onClick={handleAccept}
               className="px-4 py-1.5 rounded-full text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all flex items-center gap-1 shrink-0"
             >
               <Check className="w-4 h-4" /> Accept

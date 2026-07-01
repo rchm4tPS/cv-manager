@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useResumeStore } from "@/store/useResumeStore";
-import { Loader2, ChevronRight, ArrowLeft, Target, CheckCircle2, Lightbulb, CheckSquare, Eye, ArrowRight, ChevronLeft, Sparkles } from "lucide-react";
+import { Loader2, ChevronRight, ArrowLeft, Target, CheckCircle2, Lightbulb, CheckSquare, Eye, ArrowRight, ChevronLeft, Sparkles, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function AnalysisPane() {
@@ -15,10 +15,30 @@ export function AnalysisPane() {
     setAnalysisMode,
     activeAnalysisStep,
     setActiveAnalysisStep,
-    setIsChatOpen
+    setIsChatOpen,
+    editorSuggestions,
+    setEditorSuggestions,
+    analysisCooldownUntil,
+    setPendingAiMessage,
+    setActiveSuggestionIdForChat
   } = useResumeStore();
   const { toast } = useToast();
   const [analyzing, setAnalyzing] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  // Update timer for cooldown every second
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const isCooldownActive = analysisCooldownUntil ? now < analysisCooldownUntil : false;
+  const cooldownRemaining = analysisCooldownUntil ? Math.ceil((analysisCooldownUntil - now) / 1000) : 0;
+  const hasPendingSuggestions = editorSuggestions.some(s => s.status === 'pending');
+  const hasMinimalData = !!(resume.personalInfo.name?.trim()) &&
+    resume.sections.some(s => s.type === 'summary' && s.items.length > 0) &&
+    resume.sections.some(s => (s.type === 'experience' || s.type === 'projects') && s.items.length > 0);
+  const analyzeDisabled = analyzing || isCooldownActive || hasPendingSuggestions || !hasMinimalData;
 
   const runAnalysis = async () => {
     setAnalyzing(true);
@@ -31,6 +51,26 @@ export function AnalysisPane() {
       const data = await res.json();
       if (data.success) {
         setAnalysisResult(data.data);
+        
+        // Parse bulk analysis into actionable suggestions for the EditorPane
+        const newSuggestions: any[] = [];
+        data.data.steps.forEach((step: any) => {
+          step.recommendations.forEach((rec: any) => {
+            const newId = Math.random().toString(36).substring(2, 9);
+            rec.suggestionId = newId;
+            newSuggestions.push({
+              id: newId,
+              stepId: step.id,
+              targetSection: rec.targetSection || 'global',
+              title: rec.title,
+              whatToImprove: rec.whatToImprove,
+              whyAndHowToFix: rec.whyAndHowToFix,
+              status: 'pending'
+            });
+          });
+        });
+        setEditorSuggestions(newSuggestions);
+        
         setAnalysisMode('overview');
       } else {
         throw new Error(data.error);
@@ -80,10 +120,18 @@ export function AnalysisPane() {
           <Button 
             className="w-full py-6 rounded-xl text-md" 
             onClick={runAnalysis} 
-            disabled={analyzing}
+            disabled={analyzeDisabled}
           >
             {analyzing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-            {analyzing ? "Analyzing with AI..." : "Analyze CV"}
+            {analyzing 
+              ? "Analyzing with AI..." 
+              : !hasMinimalData
+                ? "Add Profile, Summary & Experience first"
+                : hasPendingSuggestions 
+                  ? "Review inline suggestions first" 
+                  : isCooldownActive 
+                    ? `Wait ${cooldownRemaining}s before re-analyzing` 
+                    : "Analyze CV"}
           </Button>
         </div>
       </aside>
@@ -214,8 +262,23 @@ export function AnalysisPane() {
                 </div>
               ) : (
                 <div className="space-y-4 pb-4">
-                  {step.recommendations.map((rec, i) => (
-                    <div key={i} className="border border-blue-100 bg-blue-50/30 rounded-2xl p-4 md:p-5 relative group">
+                  {step.recommendations.map((rec: any, i: number) => {
+                    const status = editorSuggestions.find(s => (rec.suggestionId && s.id === rec.suggestionId) || (s.stepId === step.id && s.title === rec.title))?.status || 'pending';
+                    const isDone = status === 'accepted';
+                    const isDismissed = status === 'rejected';
+                    
+                    return (
+                    <div key={i} className="border border-blue-100 bg-blue-50/30 rounded-2xl p-4 md:p-5 relative group overflow-hidden">
+                      {isDone && (
+                        <div className="absolute inset-0 bg-green-500/90 z-20 flex items-center justify-center backdrop-blur-[1px]">
+                          <Check className="w-20 h-20 text-white drop-shadow-md" strokeWidth={3} />
+                        </div>
+                      )}
+                      {isDismissed && (
+                        <div className="absolute inset-0 bg-red-500/90 z-20 flex items-center justify-center backdrop-blur-[1px]">
+                          <X className="w-20 h-20 text-white drop-shadow-md" strokeWidth={3} />
+                        </div>
+                      )}
                       <div className="flex flex-col @[400px]:flex-row justify-between items-start gap-3 mb-4">
                         <div className="min-w-0">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white border ml-[-6px] px-2 py-0.5 rounded-full mb-2 inline-block shrink-0">
@@ -225,7 +288,12 @@ export function AnalysisPane() {
                         </div>
                         <Button 
                           className="rounded-full bg-blue-600 hover:bg-blue-700 shadow-sm transition-all shrink-0 w-full @[400px]:w-auto"
-                          onClick={() => setIsChatOpen(true)}
+                          onClick={() => {
+                            const suggestionId = rec.suggestionId || editorSuggestions.find(s => s.stepId === step.id && s.title === rec.title)?.id;
+                            if (suggestionId) setActiveSuggestionIdForChat(suggestionId);
+                            setPendingAiMessage(`Please help me fix this issue: ${rec.whatToImprove}\nSuggestion: ${rec.whyAndHowToFix}`);
+                            setIsChatOpen(true);
+                          }}
                         >
                           Fix with AI <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
@@ -241,7 +309,7 @@ export function AnalysisPane() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
             </div>
@@ -354,6 +422,25 @@ export function AnalysisPane() {
             </div>
           </div>
         ))}
+      </div>
+      
+      <div className="pt-4 border-t pb-8">
+        <Button 
+          className="w-full py-6 rounded-xl text-md" 
+          onClick={runAnalysis} 
+          disabled={analyzeDisabled}
+        >
+          {analyzing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+          {analyzing 
+            ? "Analyzing with AI..." 
+            : !hasMinimalData
+              ? "Add Profile, Summary & Experience first"
+              : hasPendingSuggestions 
+                ? "Review inline suggestions first" 
+                : isCooldownActive 
+                  ? `Wait ${cooldownRemaining}s before re-analyzing` 
+                  : "Re-Analyze CV"}
+        </Button>
       </div>
     </aside>
   );
