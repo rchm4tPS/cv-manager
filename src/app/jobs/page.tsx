@@ -153,6 +153,12 @@ export default function JobsPage() {
         id: 'new',
         title: `${original.title || 'Untitled'} - Tailored for ${tailorModalJob.company}`,
         analysisResult: undefined, // Wipe out generic analysis!
+        tailoringJob: {
+          id: tailorModalJob.id,
+          company: tailorModalJob.company,
+          position: tailorModalJob.position,
+          description: tailorModalJob.description
+        }
       };
 
       // 3. Save duplicate
@@ -409,19 +415,36 @@ export default function JobsPage() {
               {loadingResumes ? (
                 <div className="text-center text-slate-500 py-4">Loading resumes...</div>
               ) : recentResumes.length > 0 ? (
-                recentResumes.map(resume => (
-                  <button
-                    key={resume.id}
-                    onClick={() => handleSelectResumeForTailoring(resume.id)}
-                    className="w-full text-left p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg transition-colors flex justify-between items-center group cursor-pointer"
-                  >
-                    <div>
-                      <h4 className="font-semibold text-slate-900">{resume.title || "Untitled Resume"}</h4>
-                      <p className="text-xs text-slate-500">Last updated: {new Date(resume.updatedAt).toLocaleDateString()}</p>
-                    </div>
-                    <span className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium">Select →</span>
-                  </button>
-                ))
+                recentResumes.map(resume => {
+                  const isTailored = !!resume.tailoringJob;
+                  return (
+                    <button
+                      key={resume.id}
+                      onClick={() => !isTailored && handleSelectResumeForTailoring(resume.id)}
+                      disabled={isTailored}
+                      className={`w-full text-left p-4 border rounded-lg transition-colors flex justify-between items-center group ${
+                        isTailored 
+                          ? 'bg-slate-50/50 border-slate-100 opacity-60 cursor-not-allowed' 
+                          : 'bg-slate-50 hover:bg-blue-50 border-slate-200 hover:border-blue-300 cursor-pointer'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <h4 className="font-semibold text-slate-900">{resume.title || "Untitled Resume"}</h4>
+                          {isTailored && (
+                            <span className="text-[9px] font-bold uppercase bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded">
+                              Tailored
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500">Last updated: {new Date(resume.updatedAt).toLocaleDateString()}</p>
+                      </div>
+                      {!isTailored && (
+                        <span className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium">Select →</span>
+                      )}
+                    </button>
+                  );
+                })
               ) : (
                 <div className="text-center text-slate-500 py-4">No resumes found. Please create one first!</div>
               )}

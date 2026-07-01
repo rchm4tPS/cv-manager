@@ -19,6 +19,7 @@ You must return a JSON object matching this schema exactly:
   "proposedChanges": {
      // A Partial Resume object containing the fields that were modified.
      // CRITICAL: If you modify ANY section, you MUST return the ENTIRE "sections" array containing ALL sections and ALL items, with your modifications applied. DO NOT delete or omit other items or sections!
+     // MULTI-SECTION UPDATES: If the user's request (e.g. adding a keyword) requires modifying MULTIPLE sections (like both 'summary' and 'skills'), you MUST modify all relevant sections. Do not limit yourself to just one section!
      // If you modified personal info, return the FULL "personalInfo" object.
      // Only include top-level keys ("personalInfo", "sections") if they were modified.
   }
@@ -46,9 +47,16 @@ export async function POST(req: NextRequest) {
       stepContext = `The user is currently focusing on the "${stepId}" section of the resume analysis.`;
     }
 
+    const memoryContextPrompt = (resume.acceptedSuggestions?.length || resume.rejectedSuggestions?.length) 
+      ? `SUGGESTION MEMORY:
+The user has previously interacted with AI suggestions for this CV.
+${resume.acceptedSuggestions?.length ? `The user ACCEPTED these past suggestions (do not suggest them again, assume they are done):\n- ${resume.acceptedSuggestions.join('\n- ')}\n` : ''}
+${resume.rejectedSuggestions?.length ? `The user REJECTED these past suggestions (CRITICAL: DO NOT SUGGEST THESE AGAIN OR OVERRIDE THEM):\n- ${resume.rejectedSuggestions.join('\n- ')}\n` : ''}`
+      : "";
+
     const conversationContext = messages.map(m => `${m.role.toUpperCase()}: ${m.text}`).join('\n');
 
-    const prompt = `${SYSTEM_PROMPT}\n\n${stepContext}\n\nCurrent CV JSON:\n${JSON.stringify(sanitizedResume, null, 2)}\n\nConversation History:\n${conversationContext}\n\nAI (Return JSON):`;
+    const prompt = `${SYSTEM_PROMPT}\n\n${stepContext}\n\n${memoryContextPrompt}\n\nCurrent CV JSON:\n${JSON.stringify(sanitizedResume, null, 2)}\n\nConversation History:\n${conversationContext}\n\nAI (Return JSON):`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.1-flash-lite',

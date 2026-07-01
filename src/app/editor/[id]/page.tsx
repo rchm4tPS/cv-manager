@@ -24,7 +24,7 @@ export default function EditorPage() {
   const [middlePaneWidth, setMiddlePaneWidth] = useState(400);
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { setResume, initBlankResume, analysisMode, isChatOpen } = useResumeStore();
+  const { setResume, initBlankResume, analysisMode, isChatOpen, setTailoringJob } = useResumeStore();
 
   useEffect(() => {
     async function loadResume() {
@@ -40,6 +40,9 @@ export default function EditorPage() {
         const data = await supabaseApi.getResumeById(params.id as string);
         if (data) {
           setResume(data);
+          if (data.tailoringJob) {
+            setTailoringJob(data.tailoringJob);
+          }
           setIsLoading(false);
         } else {
           toast({

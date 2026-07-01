@@ -6,6 +6,14 @@ export interface Resume {
   sections: Section[];
   settings: DocumentSettings;
   analysisResult?: AnalysisResult;
+  tailoringJob?: {
+    id: string;
+    company: string;
+    position: string;
+    description?: string;
+  };
+  acceptedSuggestions?: string[];
+  rejectedSuggestions?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -108,8 +116,11 @@ export interface AnalysisResult {
 }
 
 export interface ChatMessage {
-  role: "user" | "ai";
+  role: "user" | "ai" | "system";
+  type?: 'divider';
   text: string;
   thought?: string;
-  status?: 'pending' | 'accepted' | 'rejected';
+  status?: 'pending' | 'accepted' | 'rejected' | 'superseded';
+  isError?: boolean;
+  timestamp?: number;
 }

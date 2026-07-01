@@ -163,9 +163,17 @@ function SpacingGap({ property, value, isSpacingMode, asLi, zoom = 1 }: { proper
 
 export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   const { 
-    resume, updatePersonalInfo, updateSection, pendingChanges, 
-    showOriginal, applyPendingChanges, discardPendingChanges, setShowOriginal,
-    activeSuggestionIdForChat, updateSuggestionStatus, setActiveSuggestionIdForChat
+    resume, 
+    updateSection, 
+    updatePersonalInfo, 
+    pendingChanges, 
+    chatMessages, 
+    setChatMessages,
+    showOriginal,
+    setShowOriginal,
+    recordSuggestionDecision,
+    acceptAiChanges,
+    discardAiChanges
   } = useResumeStore();
   const { toast } = useToast();
   const [itemHeights, setItemHeights] = useState<Record<string, number>>({});
@@ -183,21 +191,13 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
 
   const handleAccept = () => {
-    applyPendingChanges();
-    if (activeSuggestionIdForChat) {
-      updateSuggestionStatus(activeSuggestionIdForChat, 'accepted');
-      setActiveSuggestionIdForChat(null);
-    }
+    acceptAiChanges();
     toast({ title: "Changes Accepted", description: "Your resume has been updated." });
   };
 
   const handleDiscard = () => {
-    discardPendingChanges();
-    if (activeSuggestionIdForChat) {
-      updateSuggestionStatus(activeSuggestionIdForChat, 'rejected');
-      setActiveSuggestionIdForChat(null);
-    }
-    toast({ title: "Changes Discarded" });
+    discardAiChanges();
+    toast({ title: "Changes Discarded", description: "The resume has been reverted." });
   };
 
   useEffect(() => {
@@ -628,11 +628,11 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                     <>
                       {hasHeader && <SpacingGap zoom={zoom} property="lineGap" value={spacing.lineGap} isSpacingMode={isSpacingMode} />}
                       {section.type === 'skills' ? (
-                        <div className="text-black" style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
+                        <div className={`text-black ${pendingChanges?.sections && !isNewItem && item.description.join(',') !== originalItem?.description?.join(',') ? highlightStr + ' p-1 inline-block' : ''}`} style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
                           {validDesc.map(({ desc, i }, idx) => (
                             <React.Fragment key={i}>
                               <span 
-                                className={`${isEditable ? 'hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors inline' : 'inline'} ${isDescChanged(i) ? highlightStr : ''}`}
+                                className={`${isEditable ? 'hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors inline' : 'inline'}`}
                                 contentEditable={isEditable} 
                                 suppressContentEditableWarning 
                                 onBlur={(e) => handleDescBlur(section.id, item.id, i, e)}

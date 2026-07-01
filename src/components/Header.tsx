@@ -17,7 +17,8 @@ export function Header() {
   const { 
     resume, setResume, updateTitle, isDirty, setIsDirty, 
     isChatOpen, setIsChatOpen, 
-    undo, redo, pastStates, futureStates 
+    undo, redo, pastStates, futureStates,
+    setTailoringJob
   } = useResumeStore();
   const isLoadingTitle = params?.id && resume.id !== params.id;
   const { toast } = useToast();
@@ -90,14 +91,14 @@ export function Header() {
   return (
     <header className="flex h-14 items-center px-6 bg-card shrink-0 relative border-b">
       <div className="flex items-center gap-4 flex-1">
-        <Link href="/home" className="text-xl font-semibold tracking-tight hover:text-blue-600 transition-colors">
+        <Link href="/home" className="text-xl font-semibold tracking-tight hover:text-blue-600 transition-colors" onClick={() => setTailoringJob(null)}>
           CV Manager
         </Link>
         <nav className="hidden md:flex gap-4 ml-6">
-          <Link href="/editor/new">
+          <Link href="/editor/new" onClick={() => setTailoringJob(null)}>
             <Button variant={isEditor ? "default" : "ghost"} size="sm">Editor</Button>
           </Link>
-          <Link href="/jobs">
+          <Link href="/jobs" onClick={() => setTailoringJob(null)}>
             <Button variant={pathname.startsWith("/jobs") ? "default" : "ghost"} size="sm">Jobs</Button>
           </Link>
         </nav>

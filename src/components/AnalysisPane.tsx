@@ -21,8 +21,10 @@ export function AnalysisPane() {
     analysisCooldownUntil,
     setPendingAiMessage,
     setActiveSuggestionIdForChat,
+    activeSuggestionIdForChat,
     tailoringJob,
-    setTailoringJob
+    setTailoringJob,
+    removeSuggestionDecision
   } = useResumeStore();
   const { toast } = useToast();
   const [analyzing, setAnalyzing] = useState(false);
@@ -41,6 +43,10 @@ export function AnalysisPane() {
     resume.sections.some(s => s.type === 'summary' && s.items.length > 0) &&
     resume.sections.some(s => (s.type === 'experience' || s.type === 'projects') && s.items.length > 0);
   const analyzeDisabled = analyzing || isCooldownActive || hasPendingSuggestions || !hasMinimalData;
+
+  const isPerfect = !!(analysisResult && analysisResult.steps.every(s => s.recommendations.length === 0));
+  const isFullyTailored = !!(tailoringJob && isPerfect);
+  const displayScore = isPerfect && analysisResult ? 100 : (analysisResult?.score || 0);
 
   const runAnalysis = async () => {
     setAnalyzing(true);
@@ -380,16 +386,30 @@ export function AnalysisPane() {
               r="40"
               fill="transparent"
               strokeDasharray={2 * Math.PI * 40}
-              strokeDashoffset={(2 * Math.PI * 40) - (analysisResult.score / 100) * (2 * Math.PI * 40)}
+              strokeDashoffset={(2 * Math.PI * 40) - (displayScore / 100) * (2 * Math.PI * 40)}
             />
           </svg>
           <div className="absolute flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-blue-600 leading-none">{analysisResult.score}</span>
+            <span className="text-2xl font-bold text-blue-600 leading-none">{displayScore}</span>
             <span className="text-[10px] font-bold text-blue-400">/100</span>
           </div>
         </div>
         </div>
       </div>
+
+      {isFullyTailored && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-start gap-3 shadow-sm">
+          <div className="bg-emerald-100 p-2 rounded-full text-emerald-600 shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-emerald-800">Fully Tailored!</h4>
+            <p className="text-sm text-emerald-700 mt-0.5 leading-relaxed">
+              This CV perfectly matches the job description. There are no more AI recommendations to improve your score.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="pt-4 border-t border-b pb-4">
         <Button 
@@ -466,8 +486,66 @@ export function AnalysisPane() {
           </div>
         ))}
       </div>
+
+      {(resume.acceptedSuggestions?.length || resume.rejectedSuggestions?.length) ? (
+        <div className="mt-8 border-t pt-8 pb-4">
+          <div className="text-center max-w-md mx-auto px-2 mb-6">
+            <h3 className="text-lg md:text-xl font-bold text-slate-800 mb-2">Suggestion History</h3>
+            <p className="text-xs md:text-sm text-slate-500">
+              The AI remembers your decisions to provide better recommendations in the future.
+            </p>
+          </div>
+          
+          <div className="space-y-6">
+            {resume.acceptedSuggestions && resume.acceptedSuggestions.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-green-700 flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Accepted Changes ({resume.acceptedSuggestions.length})
+                </h4>
+                <div className="space-y-2">
+                  {resume.acceptedSuggestions.map((text, i) => (
+                    <div key={`acc-${i}`} className="bg-green-50/50 border border-green-100 rounded-lg p-3 text-xs text-slate-600 flex justify-between items-start group">
+                      <div className="flex-1 pr-2">{text}</div>
+                      <button 
+                        onClick={() => removeSuggestionDecision(i, 'accepted')}
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity flex-shrink-0"
+                        title="Remove from memory"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {resume.rejectedSuggestions && resume.rejectedSuggestions.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-red-700 flex items-center gap-2 mb-3">
+                  <X className="w-4 h-4" />
+                  Dismissed Changes ({resume.rejectedSuggestions.length})
+                </h4>
+                <div className="space-y-2">
+                  {resume.rejectedSuggestions.map((text, i) => (
+                    <div key={`rej-${i}`} className="bg-red-50/50 border border-red-100 rounded-lg p-3 text-xs text-slate-600 line-through opacity-70 flex justify-between items-start group">
+                      <div className="flex-1 pr-2">{text}</div>
+                      <button 
+                        onClick={() => removeSuggestionDecision(i, 'rejected')}
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity flex-shrink-0"
+                        title="Remove from memory"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
       
-      {/*  */}
     </aside>
   );
 }

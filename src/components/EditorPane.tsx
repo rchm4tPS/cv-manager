@@ -15,7 +15,7 @@ import { SectionType } from "@/types/resume";
 const inputClass = "w-full h-9 rounded-md border border-slate-200 bg-white shadow-sm px-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
 
 function SuggestionChecklist({ targetSection }: { targetSection: string }) {
-  const { editorSuggestions, updateSuggestionStatus } = useResumeStore();
+  const { editorSuggestions, updateSuggestionStatus, recordSuggestionDecision, activeSuggestionIdForChat, acceptAiChanges, discardAiChanges } = useResumeStore();
   const suggestions = editorSuggestions.filter(s => s.targetSection === targetSection && s.status === 'pending');
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -51,10 +51,22 @@ function SuggestionChecklist({ targetSection }: { targetSection: string }) {
       <div className="text-blue-900 mb-1"><span className="font-medium">Issue:</span> {s.whatToImprove}</div>
       <div className="text-blue-800 mb-3"><span className="font-medium">Fix:</span> {s.whyAndHowToFix}</div>
       <div className="flex justify-end gap-2">
-        <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => updateSuggestionStatus(s.id, 'rejected')}>
+        <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => {
+          updateSuggestionStatus(s.id, 'rejected');
+          recordSuggestionDecision(s.title + ": " + s.whyAndHowToFix, 'rejected');
+          if (activeSuggestionIdForChat === s.id) {
+            discardAiChanges();
+          }
+        }}>
           <X className="w-3 h-3 mr-1" /> Dismiss
         </Button>
-        <Button size="sm" variant="default" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => updateSuggestionStatus(s.id, 'accepted')}>
+        <Button size="sm" variant="default" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => {
+          updateSuggestionStatus(s.id, 'accepted');
+          recordSuggestionDecision(s.title + ": " + s.whyAndHowToFix, 'accepted');
+          if (activeSuggestionIdForChat === s.id) {
+            acceptAiChanges();
+          }
+        }}>
           <Check className="w-3 h-3 mr-1" /> Done
         </Button>
       </div>

@@ -84,6 +84,13 @@ export async function POST(req: NextRequest) {
     const currentMonthYear = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
     const dateContextPrompt = `CRITICAL CONTEXT: The current date is ${currentMonthYear}. Any dates up to and including ${currentMonthYear} are considered in the past or present. Do NOT flag them as future dates.`;
 
+    const memoryContextPrompt = (resume.acceptedSuggestions?.length || resume.rejectedSuggestions?.length) 
+      ? `SUGGESTION MEMORY:
+The user has previously interacted with AI suggestions for this CV.
+${resume.acceptedSuggestions?.length ? `The user ACCEPTED these past suggestions (do not suggest them again, assume they are done):\n- ${resume.acceptedSuggestions.join('\n- ')}\n` : ''}
+${resume.rejectedSuggestions?.length ? `The user REJECTED these past suggestions (CRITICAL: DO NOT SUGGEST THESE AGAIN):\n- ${resume.rejectedSuggestions.join('\n- ')}\n` : ''}`
+      : "";
+
     if (tailoringJob) {
       const TAILORING_PROMPT = `You are an elite Executive Recruiter and ATS (Applicant Tracking System) Specialist. Your objective is to exclusively TAILOR the provided CV to match the provided Job Description.
 
@@ -134,7 +141,7 @@ If a section is perfectly aligned, the "recommendations" array should be empty [
 
       const tailoringContext = `CRITICAL: The candidate is specifically tailoring their CV for the position of "${tailoringJob.position}" at "${tailoringJob.company}".\nHere is the Job Description:\n"""\n${tailoringJob.description}\n"""\nYou MUST cross-reference the CV with the Job Description. Highlight missing keywords, required skills, and suggest specific rewrites in the CV to directly match the Job Description requirements. Surface these missing keywords as high-priority actionable recommendations.`;
       
-      prompt = `${TAILORING_PROMPT}\n\n${dateContextPrompt}\n\n${tailoringContext}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
+      prompt = `${TAILORING_PROMPT}\n\n${dateContextPrompt}\n\n${memoryContextPrompt}\n\n${tailoringContext}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
     } else {
       let targetRolePrompt = "";
       if (resume.personalInfo.jobTitle && resume.personalInfo.jobTitle.trim() !== "") {
@@ -142,7 +149,7 @@ If a section is perfectly aligned, the "recommendations" array should be empty [
       } else {
         targetRolePrompt = `The candidate has not specified a target role. Please analyze the CV generally as it would be perceived by an ATS, and infer the target industry/role based on the majority of their work experience and skills.`;
       }
-      prompt = `${SYSTEM_PROMPT}\n\n${dateContextPrompt}\n\n${targetRolePrompt}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
+      prompt = `${SYSTEM_PROMPT}\n\n${dateContextPrompt}\n\n${memoryContextPrompt}\n\n${targetRolePrompt}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
     }
 
     // Note: Assuming ai.models.generateContent is the correct method from @google/genai
