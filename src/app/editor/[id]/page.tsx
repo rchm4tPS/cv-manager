@@ -24,7 +24,7 @@ export default function EditorPage() {
   const [middlePaneWidth, setMiddlePaneWidth] = useState(400);
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { setResume, initBlankResume, analysisMode, isChatOpen, setTailoringJob } = useResumeStore();
+  const { setResume, initBlankResume, analysisMode, isChatOpen, setIsChatOpen, setTailoringJob } = useResumeStore();
 
   useEffect(() => {
     async function loadResume() {
@@ -163,6 +163,13 @@ export default function EditorPage() {
           title="Settings"
         >
           ⚙️
+        </button>
+        <button 
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className={`p-2 rounded-md transition-colors mt-auto mb-4 ${isChatOpen ? 'bg-blue-100 text-blue-600 outline outline-1 outline-blue-400' : 'text-blue-500 hover:bg-blue-50'}`}
+          title="AI Assistant"
+        >
+          ✨
         </button>
       </div>
 

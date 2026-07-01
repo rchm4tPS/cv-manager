@@ -3,6 +3,8 @@ import { Resume, DocumentSettings, Section, AnalysisResult, AnalysisMode, ChatMe
 
 interface ResumeStore {
   resume: Resume;
+  appTheme: 'default' | 'anthropic';
+  setAppTheme: (theme: 'default' | 'anthropic') => void;
   tailoringJob: { id: string; company: string; position: string; description?: string } | null;
   setResume: (resume: Resume) => void;
   setTailoringJob: (job: { id: string; company: string; position: string; description?: string } | null) => void;
@@ -326,6 +328,9 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   }),
   analysisCooldownUntil: null,
   setAnalysisCooldownUntil: (time) => set({ analysisCooldownUntil: time }),
+
+  appTheme: 'default',
+  setAppTheme: (theme) => set({ appTheme: theme }),
 
   // Methods
   updatePersonalInfo: (info) =>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, ExternalLink, Calendar as CalendarIcon, FileText } from "lucide-react";
+import { Pencil, Trash2, ExternalLink, Calendar as CalendarIcon, FileText, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Briefcase, BarChart3, CheckCircle2, XCircle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -47,10 +47,12 @@ export default function JobsPage() {
   // Expandable Rows State
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
 
-  // Tailor Modal State
   const [tailorModalJob, setTailorModalJob] = useState<Job | null>(null);
   const [recentResumes, setRecentResumes] = useState<Resume[]>([]);
   const [loadingResumes, setLoadingResumes] = useState(false);
+
+  // Dashboard State
+  const [isDashboardOpen, setIsDashboardOpen] = useState(true);
 
   const router = useRouter();
   const { setTailoringJob } = useResumeStore();
@@ -72,6 +74,59 @@ export default function JobsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadJobs(true);
   }, []);
+
+  // Dashboard Metrics Calculation
+  const metrics = React.useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonth = lastMonthDate.getMonth();
+    const lastMonthYear = lastMonthDate.getFullYear();
+
+    let appliedCount = 0;
+    let interviewCount = 0;
+    let offerCount = 0;
+    let rejectedCount = 0;
+
+    let currentMonthApplied = 0;
+    let lastMonthApplied = 0;
+
+    jobs.forEach(job => {
+      if (job.status === 'applied') appliedCount++;
+      else if (job.status === 'interviewed') interviewCount++;
+      else if (job.status === 'offered') offerCount++;
+      else if (job.status === 'rejected') rejectedCount++;
+
+      if (job.dateApplied) {
+        const d = new Date(job.dateApplied);
+        if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+          currentMonthApplied++;
+        } else if (d.getFullYear() === lastMonthYear && d.getMonth() === lastMonth) {
+          lastMonthApplied++;
+        }
+      }
+    });
+
+    let momGrowth = 0;
+    if (lastMonthApplied > 0) {
+      momGrowth = Math.round(((currentMonthApplied - lastMonthApplied) / lastMonthApplied) * 100);
+    } else if (currentMonthApplied > 0) {
+      momGrowth = 100;
+    }
+
+    return {
+      appliedCount,
+      interviewCount,
+      offerCount,
+      rejectedCount,
+      currentMonthApplied,
+      lastMonthApplied,
+      momGrowth,
+      totalActive: appliedCount + interviewCount
+    };
+  }, [jobs]);
 
   const openAddModal = () => {
     setEditingJob(null);
@@ -204,8 +259,91 @@ export default function JobsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Job Applications</h1>
             <p className="text-muted-foreground mt-1">Manage your applications and tailor your CV for each role.</p>
           </div>
-          <Button onClick={openAddModal}>+ Add Job</Button>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setIsDashboardOpen(!isDashboardOpen)}>
+              {isDashboardOpen ? <><ChevronUp className="w-4 h-4 mr-2" /> Hide Dashboard</> : <><BarChart3 className="w-4 h-4 mr-2" /> Show Dashboard</>}
+            </Button>
+            <Button onClick={openAddModal}>+ Add Job</Button>
+          </div>
         </div>
+
+        {/* Dashboard Section */}
+        {isDashboardOpen && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+            
+            {/* Status Card */}
+            <div className="bg-white border rounded-xl p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-slate-700 flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-blue-500" /> Pipeline Status
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm">
+                <div>
+                  <div className="text-slate-500 text-xs uppercase font-bold tracking-wider mb-1">Applied</div>
+                  <div className="text-2xl font-bold text-blue-600">{metrics.appliedCount}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500 text-xs uppercase font-bold tracking-wider mb-1">Interview</div>
+                  <div className="text-2xl font-bold text-purple-600">{metrics.interviewCount}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500 text-xs uppercase font-bold tracking-wider mb-1">Offer</div>
+                  <div className="text-2xl font-bold text-emerald-600">{metrics.offerCount}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500 text-xs uppercase font-bold tracking-wider mb-1">Rejected</div>
+                  <div className="text-2xl font-bold text-red-600">{metrics.rejectedCount}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Current Month Card */}
+            <div className="bg-white border rounded-xl p-5 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-slate-700 flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 text-emerald-500" /> This Month
+                  </h3>
+                </div>
+                <div className="text-slate-500 text-sm mt-1">Total applications submitted in {format(new Date(), "MMMM yyyy")}</div>
+              </div>
+              <div className="mt-4 flex items-baseline gap-2">
+                <span className="text-4xl font-black text-slate-800">{metrics.currentMonthApplied}</span>
+                <span className="text-slate-500 font-medium">jobs</span>
+              </div>
+            </div>
+
+            {/* MoM Comparison Card */}
+            <div className="bg-white border rounded-xl p-5 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-slate-700 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-orange-500" /> Momentum
+                  </h3>
+                </div>
+                <div className="text-slate-500 text-sm mt-1">Compared to {format(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), "MMMM")} ({metrics.lastMonthApplied} jobs)</div>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                {metrics.momGrowth > 0 ? (
+                  <div className="bg-emerald-100 text-emerald-700 flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm">
+                    <TrendingUp className="w-4 h-4" /> +{metrics.momGrowth}%
+                  </div>
+                ) : metrics.momGrowth < 0 ? (
+                  <div className="bg-red-100 text-red-700 flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm">
+                    <TrendingDown className="w-4 h-4" /> {metrics.momGrowth}%
+                  </div>
+                ) : (
+                  <div className="bg-slate-100 text-slate-700 flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm">
+                    <span className="w-4 h-4 flex items-center justify-center">-</span> 0%
+                  </div>
+                )}
+                <span className="text-sm font-medium text-slate-500">month-over-month</span>
+              </div>
+            </div>
+
+          </div>
+        )}
 
         {loading ? (
           <div className="py-20 text-center text-muted-foreground">Loading jobs...</div>

@@ -60,7 +60,7 @@ export function Rulers({ zoom = 1 }: { zoom?: number }) {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-40 print:hidden">
+    <div className="absolute inset-0 pointer-events-none z-30 print:hidden">
       {/* Horizontal Ruler (Top) */}
       <div 
         className="absolute top-[-28px] left-0 right-0 h-[24px] bg-white border border-slate-300 rounded-t-sm shadow-sm"

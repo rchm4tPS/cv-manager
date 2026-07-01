@@ -57,7 +57,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col p-8 md:p-12 overflow-auto">
+    <div className="flex-1 bg-muted/10 flex flex-col p-8 md:p-12 overflow-auto">
       <div className="max-w-4xl w-full mx-auto space-y-10">
         
         {/* Header Section */}

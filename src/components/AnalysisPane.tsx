@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useResumeStore } from "@/store/useResumeStore";
-import { Loader2, ChevronRight, ArrowLeft, Target, CheckCircle2, Lightbulb, CheckSquare, Eye, ArrowRight, ChevronLeft, Sparkles, Check, X } from "lucide-react";
+import { Loader2, ChevronRight, ArrowLeft, Target, CheckCircle2, Lightbulb, CheckSquare, Eye, ArrowRight, ChevronLeft, Sparkles, Check, X, Briefcase, GraduationCap, FolderDot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function AnalysisPane() {
@@ -46,6 +46,7 @@ export function AnalysisPane() {
 
   const isPerfect = !!(analysisResult && analysisResult.steps.every(s => s.recommendations.length === 0));
   const isFullyTailored = !!(tailoringJob && isPerfect);
+  const isFullyOptimized = !!(!tailoringJob && isPerfect);
   const displayScore = isPerfect && analysisResult ? 100 : (analysisResult?.score || 0);
 
   const runAnalysis = async () => {
@@ -98,11 +99,16 @@ export function AnalysisPane() {
     switch (id) {
       case 'contact': return <Target className="w-5 h-5 text-orange-500" />;
       case 'summary': return <Lightbulb className="w-5 h-5 text-emerald-500" />;
-      case 'experiences': return <CheckSquare className="w-5 h-5 text-blue-500" />;
+      case 'experience': return <Briefcase className="w-5 h-5 text-blue-500" />;
+      case 'projects': return <FolderDot className="w-5 h-5 text-amber-500" />;
+      case 'education': return <GraduationCap className="w-5 h-5 text-indigo-500" />;
+      case 'skills': return <Sparkles className="w-5 h-5 text-purple-500" />;
       case 'format': return <Eye className="w-5 h-5 text-indigo-500" />;
       case 'keywords': return <Sparkles className="w-5 h-5 text-purple-500" />;
       case 'summary-match': return <Target className="w-5 h-5 text-emerald-500" />;
       case 'experience-match': return <CheckSquare className="w-5 h-5 text-blue-500" />;
+      case 'projects-match': return <FolderDot className="w-5 h-5 text-amber-500" />;
+      case 'education-match': return <GraduationCap className="w-5 h-5 text-indigo-500" />;
       default: return <Target className="w-5 h-5" />;
     }
   };
@@ -111,11 +117,16 @@ export function AnalysisPane() {
     switch (id) {
       case 'contact': return "bg-orange-50";
       case 'summary': return "bg-emerald-50";
-      case 'experiences': return "bg-blue-50";
+      case 'experience': return "bg-blue-50";
+      case 'projects': return "bg-amber-50";
+      case 'education': return "bg-indigo-50";
+      case 'skills': return "bg-purple-50";
       case 'format': return "bg-indigo-50";
       case 'keywords': return "bg-purple-50";
       case 'summary-match': return "bg-emerald-50";
       case 'experience-match': return "bg-blue-50";
+      case 'projects-match': return "bg-amber-50";
+      case 'education-match': return "bg-indigo-50";
       default: return "bg-slate-50";
     }
   };
@@ -406,6 +417,20 @@ export function AnalysisPane() {
             <h4 className="font-bold text-emerald-800">Fully Tailored!</h4>
             <p className="text-sm text-emerald-700 mt-0.5 leading-relaxed">
               This CV perfectly matches the job description. There are no more AI recommendations to improve your score.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isFullyOptimized && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-start gap-3 shadow-sm">
+          <div className="bg-blue-100 p-2 rounded-full text-blue-600 shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-blue-800">Fully Optimized!</h4>
+            <p className="text-sm text-blue-700 mt-0.5 leading-relaxed">
+              Your CV looks flawless. There are no more AI recommendations to improve your score.
             </p>
           </div>
         </div>

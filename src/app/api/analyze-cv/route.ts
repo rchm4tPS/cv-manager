@@ -11,8 +11,11 @@ You will receive the CV data in a structured JSON format.
 Perform a rigorous review based on the following criteria:
 1. Contact & Profile Completeness: Checks for consistency and completeness of contact information and personal details.
 2. Summary: Analyzes summary for impact, clarity, and the inclusion of quantifiable achievements.
-3. Experiences: Reviews work experience, projects, and volunteering sections for impact, clarity, and improvement opportunities (e.g. use of the XYZ formula).
-4. Format & Structure: Checks for consistent formatting, skills, education, and a clear visual layout to ensure readability.
+3. Work Experience: Reviews work experience for impact, clarity, and improvement opportunities (e.g. use of the XYZ formula).
+4. Projects: Reviews projects for technical depth, impact, and clarity.
+5. Education: Reviews education section for relevance and format.
+6. Skills: Checks for keyword optimization and skill relevance.
+7. Format & Structure: Checks for overall consistent formatting and a clear visual layout to ensure readability.
 
 Return your complete analysis strictly as a JSON object matching the following structure exactly (do not wrap in markdown code blocks like \`\`\`json, just return the raw JSON object):
 
@@ -46,8 +49,32 @@ Return your complete analysis strictly as a JSON object matching the following s
       "recommendations": [...]
     },
     {
-      "id": "experiences",
-      "title": "Experiences",
+      "id": "experience",
+      "title": "Work Experience",
+      "status": "...",
+      "overallAssessment": "...",
+      "workingWell": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "projects",
+      "title": "Projects",
+      "status": "...",
+      "overallAssessment": "...",
+      "workingWell": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "education",
+      "title": "Education",
+      "status": "...",
+      "overallAssessment": "...",
+      "workingWell": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "skills",
+      "title": "Skills",
       "status": "...",
       "overallAssessment": "...",
       "workingWell": [...],
@@ -64,8 +91,8 @@ Return your complete analysis strictly as a JSON object matching the following s
   ]
 }
 
-Make sure there are exactly 4 steps with IDs: "contact", "summary", "experiences", "format".
-If a section looks perfect, the "recommendations" array should be empty [].`;
+Make sure there are exactly 7 steps with IDs: "contact", "summary", "experience", "projects", "education", "skills", "format".
+If a section looks perfect, or if the user's CV does not contain that specific section (e.g. they have no projects), the "recommendations" array should be empty [].`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -132,12 +159,28 @@ Return your complete analysis strictly as a JSON object matching the following s
       "overallAssessment": "<Assess how well the work experiences highlight the required skills for this role>",
       "workingWell": [],
       "recommendations": []
+    },
+    {
+      "id": "projects-match",
+      "title": "Projects Alignment",
+      "status": "...",
+      "overallAssessment": "<Assess how well projects demonstrate the required JD skills>",
+      "workingWell": [],
+      "recommendations": []
+    },
+    {
+      "id": "education-match",
+      "title": "Education Alignment",
+      "status": "...",
+      "overallAssessment": "<Assess how well education supports the JD requirements>",
+      "workingWell": [],
+      "recommendations": []
     }
   ]
 }
 
-Make sure there are exactly 3 steps with IDs: "keywords", "summary-match", "experience-match".
-If a section is perfectly aligned, the "recommendations" array should be empty [].`;
+Make sure there are exactly 5 steps with IDs: "keywords", "summary-match", "experience-match", "projects-match", "education-match".
+If a section is perfectly aligned, or if the CV lacks it, the "recommendations" array should be empty [].`;
 
       const tailoringContext = `CRITICAL: The candidate is specifically tailoring their CV for the position of "${tailoringJob.position}" at "${tailoringJob.company}".\nHere is the Job Description:\n"""\n${tailoringJob.description}\n"""\nYou MUST cross-reference the CV with the Job Description. Highlight missing keywords, required skills, and suggest specific rewrites in the CV to directly match the Job Description requirements. Surface these missing keywords as high-priority actionable recommendations.`;
       

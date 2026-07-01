@@ -32,6 +32,7 @@ export function AiChatPane() {
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -166,7 +167,7 @@ export function AiChatPane() {
                 <div className="h-px bg-slate-200 flex-1"></div>
               </div>
             ) : (
-            <div className={`max-w-[85%] rounded-2xl p-4 ${
+            <div className={`w-fit max-w-[85%] rounded-2xl p-4 ${
               msg.role === "user" 
                 ? "bg-blue-600 text-white shadow-sm ml-auto rounded-tr-sm" 
                 : "bg-slate-100 text-slate-800 mr-auto rounded-tl-sm border border-slate-200/60"
@@ -252,18 +253,27 @@ export function AiChatPane() {
       <div className="p-4 bg-white border-t">
         <form 
           onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-          className="relative flex items-center"
+          className="relative flex items-end p-1.5 rounded-xl border border-slate-200 bg-slate-50 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all"
         >
-          <input
-            type="text"
-            className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            style={{ minHeight: '32px' }}
+            className="flex-1 pl-3 pr-2 py-1.5 bg-transparent focus:outline-none resize-none overflow-y-auto max-h-[96px] text-sm"
             placeholder={pendingChanges ? "Tweak this fix..." : "Tell me what to fix..."}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
+                if (textareaRef.current) {
+                  textareaRef.current.style.height = 'auto';
+                }
               }
             }}
             disabled={isProcessing}
@@ -272,7 +282,7 @@ export function AiChatPane() {
             type="submit" 
             size="icon" 
             variant="ghost"
-            className="absolute right-2 text-slate-400 hover:text-blue-600"
+            className="shrink-0 w-8 h-8 text-slate-400 hover:text-blue-600 ml-1 mb-[2px]"
             disabled={!input.trim() || isProcessing}
           >
             <Send className="w-4 h-4" />
