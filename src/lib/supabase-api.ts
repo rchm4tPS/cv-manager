@@ -90,7 +90,7 @@ export const supabaseApi = {
 
   // --- Jobs ---
 
-  async saveJob(job: { id: string; company: string; position: string; location?: string; status: string; link?: string; dateAdded: string; description?: string }) {
+  async saveJob(job: { id: string; company: string; position: string; location?: string; status: string; link?: string; dateAdded: string; dateApplied?: string; description?: string }) {
     const { data, error } = await supabase
       .from('jobs')
       .upsert({
@@ -102,7 +102,8 @@ export const supabaseApi = {
         status: job.status,
         link: job.link,
         date_added: job.dateAdded,
-        description: job.description
+        date_applied: job.dateApplied,
+        description: job.description,
       })
       .select()
       .single();
@@ -133,6 +134,7 @@ export const supabaseApi = {
       status: row.status,
       link: row.link,
       dateAdded: row.date_added,
+      dateApplied: row.date_applied,
       description: row.description
     }));
   },

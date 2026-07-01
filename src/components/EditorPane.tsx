@@ -15,12 +15,13 @@ import { SectionType } from "@/types/resume";
 const inputClass = "w-full h-9 rounded-md border border-slate-200 bg-white shadow-sm px-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
 
 function SuggestionChecklist({ targetSection }: { targetSection: string }) {
-  const { editorSuggestions, updateSuggestionStatus } = useResumeStore();
+  const { editorSuggestions, updateSuggestionStatus, recordSuggestionDecision, activeSuggestionIdForChat, acceptAiChanges, discardAiChanges } = useResumeStore();
   const suggestions = editorSuggestions.filter(s => s.targetSection === targetSection && s.status === 'pending');
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     if (currentIndex >= suggestions.length && suggestions.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentIndex(suggestions.length - 1);
     }
   }, [suggestions.length, currentIndex]);
@@ -51,10 +52,22 @@ function SuggestionChecklist({ targetSection }: { targetSection: string }) {
       <div className="text-blue-900 mb-1"><span className="font-medium">Issue:</span> {s.whatToImprove}</div>
       <div className="text-blue-800 mb-3"><span className="font-medium">Fix:</span> {s.whyAndHowToFix}</div>
       <div className="flex justify-end gap-2">
-        <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => updateSuggestionStatus(s.id, 'rejected')}>
+        <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => {
+          updateSuggestionStatus(s.id, 'rejected');
+          recordSuggestionDecision(s.title + ": " + s.whyAndHowToFix, 'rejected');
+          if (activeSuggestionIdForChat === s.id) {
+            discardAiChanges();
+          }
+        }}>
           <X className="w-3 h-3 mr-1" /> Dismiss
         </Button>
-        <Button size="sm" variant="default" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => updateSuggestionStatus(s.id, 'accepted')}>
+        <Button size="sm" variant="default" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => {
+          updateSuggestionStatus(s.id, 'accepted');
+          recordSuggestionDecision(s.title + ": " + s.whyAndHowToFix, 'accepted');
+          if (activeSuggestionIdForChat === s.id) {
+            acceptAiChanges();
+          }
+        }}>
           <Check className="w-3 h-3 mr-1" /> Done
         </Button>
       </div>
@@ -76,6 +89,7 @@ function PersonalInfoForm() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -170,10 +184,10 @@ function PersonalInfoForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="contact" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 @md:grid-cols-2 gap-6">
         <div className="space-y-1.5">
@@ -300,6 +314,7 @@ function PersonalInfoForm() {
                   aspect={1}
                   circularCrop
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img 
                     ref={imgRef}
                     src={imgSrc} 
@@ -371,18 +386,18 @@ function SummaryForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="summary" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <div className="space-y-2 relative">
         <div className="flex justify-between items-center">
           <label className="text-xs font-semibold text-muted-foreground">{summarySection.title}</label>
           <div className="flex gap-2">
-            <Button size="sm" className="bg-blue-500 hover:bg-blue-600 rounded-full h-8 px-4 text-xs font-semibold flex gap-1.5">
+            {/* <Button size="sm" className="bg-blue-500 hover:bg-blue-600 rounded-full h-8 px-4 text-xs font-semibold flex gap-1.5">
               <Sparkles className="w-3.5 h-3.5" /> Write with AI
-            </Button>
+            </Button> */}
             <Button 
               size="sm" 
               variant="outline"
@@ -518,10 +533,10 @@ function WorkExperienceForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="experience" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <Button variant="outline" size="sm" className="rounded-full px-4 text-xs font-semibold border-muted-foreground/30" onClick={addItem}>
         + Add Work Experience
@@ -564,11 +579,11 @@ function WorkExperienceForm() {
           <div className="pt-4 space-y-3">
             <div className="flex flex-wrap justify-between items-center gap-2">
               <label className="text-sm font-semibold text-foreground">Responsibilities:</label>
-              <div className="flex gap-2">
+              {/* <div className="flex gap-2">
                 <Button size="sm" className="bg-blue-500 hover:bg-blue-600 rounded-full h-8 px-4 text-xs font-semibold flex gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" /> Write with AI
                 </Button>
-              </div>
+              </div> */}
             </div>
 
             <div className={`mt-2 space-y-2 p-2 -mx-2 rounded-xl transition-colors duration-300 ${draggedDesc?.itemId === item.id ? 'bg-slate-200/60 shadow-inner' : 'bg-transparent'}`}>
@@ -725,10 +740,10 @@ function ProjectExperienceForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="projects" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <Button variant="outline" size="sm" className="rounded-full px-4 text-xs font-semibold border-muted-foreground/30" onClick={addItem}>
         + Add Project Experience
@@ -869,10 +884,10 @@ function EducationForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="education" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <Button variant="outline" size="sm" className="rounded-full px-4 text-xs font-semibold border-muted-foreground/30" onClick={addItem}>
         + Add Education
@@ -915,6 +930,7 @@ function EducationForm() {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function SkillsInput({ item, updateItem }: { item: any, updateItem: (id: string, field: string, val: string[]) => void }) {
   const [localValue, setLocalValue] = useState(item.description.join(", "));
 
@@ -922,6 +938,7 @@ function SkillsInput({ item, updateItem }: { item: any, updateItem: (id: string,
     const currentTrimmed = localValue.split(',').map((s: string) => s.trim()).filter(Boolean).join(',');
     const newTrimmed = item.description.map((s: string) => s.trim()).filter(Boolean).join(',');
     if (currentTrimmed !== newTrimmed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalValue(item.description.join(", "));
     }
   }, [item.description, localValue]);
@@ -987,10 +1004,10 @@ function SkillsForm() {
   return (
     <div className="space-y-4 pt-4 border-t mt-4">
       <SuggestionChecklist targetSection="skills" />
-      <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
+      {/* <div className="border rounded-md p-3 bg-muted/10 flex justify-between items-center cursor-pointer mb-6 hover:bg-muted/20 transition-colors">
         <span className="text-sm font-semibold text-muted-foreground">Tips and Recommendations</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <Button variant="outline" size="sm" className="rounded-full px-4 text-xs font-semibold border-muted-foreground/30" onClick={addItem}>
         + Add Skill Category
@@ -1023,7 +1040,7 @@ function SkillsForm() {
 }
 
 function CustomSectionForm({ sectionId }: { sectionId: string }) {
-  const { resume, updateSection, deleteSection } = useResumeStore();
+  const { resume, updateSection } = useResumeStore();
   const [draggedDesc, setDraggedDesc] = useState<{ itemId: string; index: number } | null>(null);
   const section = resume.sections.find(s => s.id === sectionId);
   
@@ -1238,6 +1255,7 @@ export function EditorPane() {
   const { resume, addSection, deleteSection } = useResumeStore();
 
   useEffect(() => {
+    // eslint-disable-next-line
     setMounted(true);
   }, []);
 

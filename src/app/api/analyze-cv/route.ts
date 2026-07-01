@@ -11,8 +11,11 @@ You will receive the CV data in a structured JSON format.
 Perform a rigorous review based on the following criteria:
 1. Contact & Profile Completeness: Checks for consistency and completeness of contact information and personal details.
 2. Summary: Analyzes summary for impact, clarity, and the inclusion of quantifiable achievements.
-3. Experiences: Reviews work experience, projects, and volunteering sections for impact, clarity, and improvement opportunities (e.g. use of the XYZ formula).
-4. Format & Structure: Checks for consistent formatting, skills, education, and a clear visual layout to ensure readability.
+3. Work Experience: Reviews work experience for impact, clarity, and improvement opportunities (e.g. use of the XYZ formula).
+4. Projects: Reviews projects for technical depth, impact, and clarity.
+5. Education: Reviews education section for relevance and format.
+6. Skills: Checks for keyword optimization and skill relevance.
+7. Format & Structure: Checks for overall consistent formatting and a clear visual layout to ensure readability.
 
 Return your complete analysis strictly as a JSON object matching the following structure exactly (do not wrap in markdown code blocks like \`\`\`json, just return the raw JSON object):
 
@@ -46,8 +49,32 @@ Return your complete analysis strictly as a JSON object matching the following s
       "recommendations": [...]
     },
     {
-      "id": "experiences",
-      "title": "Experiences",
+      "id": "experience",
+      "title": "Work Experience",
+      "status": "...",
+      "overallAssessment": "...",
+      "workingWell": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "projects",
+      "title": "Projects",
+      "status": "...",
+      "overallAssessment": "...",
+      "workingWell": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "education",
+      "title": "Education",
+      "status": "...",
+      "overallAssessment": "...",
+      "workingWell": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "skills",
+      "title": "Skills",
       "status": "...",
       "overallAssessment": "...",
       "workingWell": [...],
@@ -64,13 +91,13 @@ Return your complete analysis strictly as a JSON object matching the following s
   ]
 }
 
-Make sure there are exactly 4 steps with IDs: "contact", "summary", "experiences", "format".
-If a section looks perfect, the "recommendations" array should be empty [].`;
+Make sure there are exactly 7 steps with IDs: "contact", "summary", "experience", "projects", "education", "skills", "format".
+If a section looks perfect, or if the user's CV does not contain that specific section (e.g. they have no projects), the "recommendations" array should be empty [].`;
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { resume } = body as { resume: Resume };
+    const { resume, tailoringJob } = body as { resume: Resume, tailoringJob?: { company: string, position: string, description: string } };
 
     // Strip out heavy/unnecessary UI settings to save tokens and focus the AI
     const sanitizedResume = {
@@ -79,18 +106,94 @@ export async function POST(req: NextRequest) {
       sections: resume.sections,
     };
     
-    let targetRolePrompt = "";
-    if (resume.personalInfo.jobTitle && resume.personalInfo.jobTitle.trim() !== "") {
-      targetRolePrompt = `The candidate is specifically targeting the role of: "${resume.personalInfo.jobTitle}". Tailor your analysis and suggestions to maximize ATS compatibility and impact for this specific role.`;
-    } else {
-      targetRolePrompt = `The candidate has not specified a target role. Please analyze the CV generally as it would be perceived by an ATS, and infer the target industry/role based on the majority of their work experience and skills.`;
-    }
-
+    let prompt = "";
     const currentDate = new Date();
     const currentMonthYear = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
     const dateContextPrompt = `CRITICAL CONTEXT: The current date is ${currentMonthYear}. Any dates up to and including ${currentMonthYear} are considered in the past or present. Do NOT flag them as future dates.`;
 
-    const prompt = `${SYSTEM_PROMPT}\n\n${dateContextPrompt}\n\n${targetRolePrompt}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
+    const memoryContextPrompt = (resume.acceptedSuggestions?.length || resume.rejectedSuggestions?.length) 
+      ? `SUGGESTION MEMORY:
+The user has previously interacted with AI suggestions for this CV.
+${resume.acceptedSuggestions?.length ? `The user ACCEPTED these past suggestions (do not suggest them again, assume they are done):\n- ${resume.acceptedSuggestions.join('\n- ')}\n` : ''}
+${resume.rejectedSuggestions?.length ? `The user REJECTED these past suggestions (CRITICAL: DO NOT SUGGEST THESE AGAIN):\n- ${resume.rejectedSuggestions.join('\n- ')}\n` : ''}`
+      : "";
+
+    if (tailoringJob) {
+      const TAILORING_PROMPT = `You are an elite Executive Recruiter and ATS (Applicant Tracking System) Specialist. Your objective is to exclusively TAILOR the provided CV to match the provided Job Description.
+
+First, extract the most critical hard skills, soft skills, and keywords from the Job Description.
+Then, evaluate how well the CV aligns with these extracted keywords.
+
+Return your complete analysis strictly as a JSON object matching the following structure exactly (do not wrap in markdown code blocks like \`\`\`json, just return the raw JSON object):
+
+{
+  "score": <number 0-100 representing how well the CV currently matches the JD>,
+  "steps": [
+    {
+      "id": "keywords",
+      "title": "JD Keyword Analysis",
+      "status": "<e.g., 'Missing 3 critical skills' or 'Highly aligned'>",
+      "overallAssessment": "<List the core keywords from the JD and assess if the CV has them>",
+      "workingWell": ["<keyword found in CV>", "<another found keyword>"],
+      "recommendations": [
+        {
+          "title": "Add missing keyword: [Keyword]",
+          "whatToImprove": "The JD requires [Keyword] but it is missing.",
+          "whyAndHowToFix": "Add [Keyword] to your Skills or Summary section.",
+          "targetSection": "skills"
+        }
+      ]
+    },
+    {
+      "id": "summary-match",
+      "title": "Summary Alignment",
+      "status": "<e.g., 'Needs targeting'>",
+      "overallAssessment": "<Assess how well the summary positions the candidate for this specific role>",
+      "workingWell": [],
+      "recommendations": []
+    },
+    {
+      "id": "experience-match",
+      "title": "Experience Alignment",
+      "status": "<e.g., 'Highlight relevant experience'>",
+      "overallAssessment": "<Assess how well the work experiences highlight the required skills for this role>",
+      "workingWell": [],
+      "recommendations": []
+    },
+    {
+      "id": "projects-match",
+      "title": "Projects Alignment",
+      "status": "...",
+      "overallAssessment": "<Assess how well projects demonstrate the required JD skills>",
+      "workingWell": [],
+      "recommendations": []
+    },
+    {
+      "id": "education-match",
+      "title": "Education Alignment",
+      "status": "...",
+      "overallAssessment": "<Assess how well education supports the JD requirements>",
+      "workingWell": [],
+      "recommendations": []
+    }
+  ]
+}
+
+Make sure there are exactly 5 steps with IDs: "keywords", "summary-match", "experience-match", "projects-match", "education-match".
+If a section is perfectly aligned, or if the CV lacks it, the "recommendations" array should be empty [].`;
+
+      const tailoringContext = `CRITICAL: The candidate is specifically tailoring their CV for the position of "${tailoringJob.position}" at "${tailoringJob.company}".\nHere is the Job Description:\n"""\n${tailoringJob.description}\n"""\nYou MUST cross-reference the CV with the Job Description. Highlight missing keywords, required skills, and suggest specific rewrites in the CV to directly match the Job Description requirements. Surface these missing keywords as high-priority actionable recommendations.`;
+      
+      prompt = `${TAILORING_PROMPT}\n\n${dateContextPrompt}\n\n${memoryContextPrompt}\n\n${tailoringContext}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
+    } else {
+      let targetRolePrompt = "";
+      if (resume.personalInfo.jobTitle && resume.personalInfo.jobTitle.trim() !== "") {
+        targetRolePrompt = `The candidate is specifically targeting the role of: "${resume.personalInfo.jobTitle}". Tailor your analysis and suggestions to maximize ATS compatibility and impact for this specific role.`;
+      } else {
+        targetRolePrompt = `The candidate has not specified a target role. Please analyze the CV generally as it would be perceived by an ATS, and infer the target industry/role based on the majority of their work experience and skills.`;
+      }
+      prompt = `${SYSTEM_PROMPT}\n\n${dateContextPrompt}\n\n${memoryContextPrompt}\n\n${targetRolePrompt}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
+    }
 
     // Note: Assuming ai.models.generateContent is the correct method from @google/genai
     const response = await ai.models.generateContent({
@@ -111,6 +214,7 @@ export async function POST(req: NextRequest) {
     const analysisResult = JSON.parse(text);
 
     return NextResponse.json({ success: true, data: analysisResult });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('CV Analysis Error:', error);
     return NextResponse.json(

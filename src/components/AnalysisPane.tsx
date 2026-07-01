@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useResumeStore } from "@/store/useResumeStore";
-import { Loader2, ChevronRight, ArrowLeft, Target, CheckCircle2, Lightbulb, CheckSquare, Eye, ArrowRight, ChevronLeft, Sparkles, Check, X } from "lucide-react";
+import { Loader2, ChevronRight, ArrowLeft, Target, CheckCircle2, Lightbulb, CheckSquare, Eye, ArrowRight, ChevronLeft, Sparkles, Check, X, Briefcase, GraduationCap, FolderDot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function AnalysisPane() {
@@ -20,14 +20,18 @@ export function AnalysisPane() {
     setEditorSuggestions,
     analysisCooldownUntil,
     setPendingAiMessage,
-    setActiveSuggestionIdForChat
+    setActiveSuggestionIdForChat,
+    tailoringJob,
+    removeSuggestionDecision
   } = useResumeStore();
   const { toast } = useToast();
   const [analyzing, setAnalyzing] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
 
   // Update timer for cooldown every second
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -40,21 +44,29 @@ export function AnalysisPane() {
     resume.sections.some(s => (s.type === 'experience' || s.type === 'projects') && s.items.length > 0);
   const analyzeDisabled = analyzing || isCooldownActive || hasPendingSuggestions || !hasMinimalData;
 
+  const isPerfect = !!(analysisResult && analysisResult.steps.every(s => s.recommendations.length === 0));
+  const isFullyTailored = !!(tailoringJob && isPerfect);
+  const isFullyOptimized = !!(!tailoringJob && isPerfect);
+  const displayScore = isPerfect && analysisResult ? 100 : (analysisResult?.score || 0);
+
   const runAnalysis = async () => {
     setAnalyzing(true);
     try {
       const res = await fetch('/api/analyze-cv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume })
+        body: JSON.stringify({ resume, tailoringJob })
       });
       const data = await res.json();
       if (data.success) {
         setAnalysisResult(data.data);
         
         // Parse bulk analysis into actionable suggestions for the EditorPane
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newSuggestions: any[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data.data.steps.forEach((step: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           step.recommendations.forEach((rec: any) => {
             const newId = Math.random().toString(36).substring(2, 9);
             rec.suggestionId = newId;
@@ -75,6 +87,7 @@ export function AnalysisPane() {
       } else {
         throw new Error(data.error);
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: "Analysis Failed",
@@ -90,8 +103,16 @@ export function AnalysisPane() {
     switch (id) {
       case 'contact': return <Target className="w-5 h-5 text-orange-500" />;
       case 'summary': return <Lightbulb className="w-5 h-5 text-emerald-500" />;
-      case 'experiences': return <CheckSquare className="w-5 h-5 text-blue-500" />;
+      case 'experience': return <Briefcase className="w-5 h-5 text-blue-500" />;
+      case 'projects': return <FolderDot className="w-5 h-5 text-amber-500" />;
+      case 'education': return <GraduationCap className="w-5 h-5 text-indigo-500" />;
+      case 'skills': return <Sparkles className="w-5 h-5 text-purple-500" />;
       case 'format': return <Eye className="w-5 h-5 text-indigo-500" />;
+      case 'keywords': return <Sparkles className="w-5 h-5 text-purple-500" />;
+      case 'summary-match': return <Target className="w-5 h-5 text-emerald-500" />;
+      case 'experience-match': return <CheckSquare className="w-5 h-5 text-blue-500" />;
+      case 'projects-match': return <FolderDot className="w-5 h-5 text-amber-500" />;
+      case 'education-match': return <GraduationCap className="w-5 h-5 text-indigo-500" />;
       default: return <Target className="w-5 h-5" />;
     }
   };
@@ -100,11 +121,25 @@ export function AnalysisPane() {
     switch (id) {
       case 'contact': return "bg-orange-50";
       case 'summary': return "bg-emerald-50";
-      case 'experiences': return "bg-blue-50";
+      case 'experience': return "bg-blue-50";
+      case 'projects': return "bg-amber-50";
+      case 'education': return "bg-indigo-50";
+      case 'skills': return "bg-purple-50";
       case 'format': return "bg-indigo-50";
+      case 'keywords': return "bg-purple-50";
+      case 'summary-match': return "bg-emerald-50";
+      case 'experience-match': return "bg-blue-50";
+      case 'projects-match': return "bg-amber-50";
+      case 'education-match': return "bg-indigo-50";
       default: return "bg-slate-50";
     }
   };
+
+  const TailoringBanner = tailoringJob ? (
+    <div className="bg-blue-50 text-blue-700 text-xs px-3 py-1.5 rounded-full inline-flex font-medium mb-4 border border-blue-100 flex items-center justify-center shrink-0 mx-auto max-w-fit">
+      ✨ Tailoring for {tailoringJob.position}
+    </div>
+  ) : null;
 
   if (!analysisResult) {
     return (
@@ -114,6 +149,9 @@ export function AnalysisPane() {
             <Lightbulb className="w-8 h-8" />
           </div>
           <h2 className="text-xl font-semibold mb-2">Resume Analysis</h2>
+          
+          {TailoringBanner}
+
           <p className="text-sm text-slate-500 mb-8">
             Get an ATS score and actionable AI feedback to improve your CV instantly.
           </p>
@@ -131,7 +169,7 @@ export function AnalysisPane() {
                   ? "Review inline suggestions first" 
                   : isCooldownActive 
                     ? `Wait ${cooldownRemaining}s before re-analyzing` 
-                    : "Analyze CV"}
+                    : (tailoringJob ? "Analyze for this Job" : "Analyze CV")}
           </Button>
         </div>
       </aside>
@@ -150,6 +188,8 @@ export function AnalysisPane() {
     return (
       <aside className="w-full h-full bg-slate-50/50 p-4 md:p-6 flex flex-col overflow-hidden min-h-0 min-w-0">
         
+        {TailoringBanner}
+
         {/* Header Header */}
         <div className="flex items-start md:items-center gap-2 md:gap-4 mb-4 shrink-0 min-w-0">
           <Button 
@@ -262,6 +302,7 @@ export function AnalysisPane() {
                 </div>
               ) : (
                 <div className="space-y-4 pb-4">
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {step.recommendations.map((rec: any, i: number) => {
                     const status = editorSuggestions.find(s => (rec.suggestionId && s.id === rec.suggestionId) || (s.stepId === step.id && s.title === rec.title))?.status || 'pending';
                     const isDone = status === 'accepted';
@@ -322,6 +363,10 @@ export function AnalysisPane() {
   // Overview Mode (Screenshot 1)
   return (
     <aside className="w-full h-full bg-slate-50/50 p-4 md:p-6 overflow-y-auto space-y-6 md:space-y-8 overflow-x-hidden">
+      <div className="flex justify-center">
+        {TailoringBanner}
+      </div>
+
       {/* Top Banner */}
       <div className="bg-white rounded-3xl p-4 md:p-6 border shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-4">
@@ -357,16 +402,44 @@ export function AnalysisPane() {
               r="40"
               fill="transparent"
               strokeDasharray={2 * Math.PI * 40}
-              strokeDashoffset={(2 * Math.PI * 40) - (analysisResult.score / 100) * (2 * Math.PI * 40)}
+              strokeDashoffset={(2 * Math.PI * 40) - (displayScore / 100) * (2 * Math.PI * 40)}
             />
           </svg>
           <div className="absolute flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-blue-600 leading-none">{analysisResult.score}</span>
+            <span className="text-2xl font-bold text-blue-600 leading-none">{displayScore}</span>
             <span className="text-[10px] font-bold text-blue-400">/100</span>
           </div>
         </div>
         </div>
       </div>
+
+      {isFullyTailored && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-start gap-3 shadow-sm">
+          <div className="bg-emerald-100 p-2 rounded-full text-emerald-600 shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-emerald-800">Fully Tailored!</h4>
+            <p className="text-sm text-emerald-700 mt-0.5 leading-relaxed">
+              This CV perfectly matches the job description. There are no more AI recommendations to improve your score.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isFullyOptimized && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-start gap-3 shadow-sm">
+          <div className="bg-blue-100 p-2 rounded-full text-blue-600 shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-blue-800">Fully Optimized!</h4>
+            <p className="text-sm text-blue-700 mt-0.5 leading-relaxed">
+              Your CV looks flawless. There are no more AI recommendations to improve your score.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="pt-4 border-t border-b pb-4">
         <Button 
@@ -383,7 +456,7 @@ export function AnalysisPane() {
                 ? "Review inline suggestions first" 
                 : isCooldownActive 
                   ? `Wait ${cooldownRemaining}s before re-analyzing` 
-                  : "Re-Analyze CV"}
+                  : (tailoringJob ? "Re-Analyze for Job" : "Re-Analyze CV")}
         </Button>
       </div>
 
@@ -443,8 +516,66 @@ export function AnalysisPane() {
           </div>
         ))}
       </div>
+
+      {(resume.acceptedSuggestions?.length || resume.rejectedSuggestions?.length) ? (
+        <div className="mt-8 border-t pt-8 pb-4">
+          <div className="text-center max-w-md mx-auto px-2 mb-6">
+            <h3 className="text-lg md:text-xl font-bold text-slate-800 mb-2">Suggestion History</h3>
+            <p className="text-xs md:text-sm text-slate-500">
+              The AI remembers your decisions to provide better recommendations in the future.
+            </p>
+          </div>
+          
+          <div className="space-y-6">
+            {resume.acceptedSuggestions && resume.acceptedSuggestions.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-green-700 flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Accepted Changes ({resume.acceptedSuggestions.length})
+                </h4>
+                <div className="space-y-2">
+                  {resume.acceptedSuggestions.map((text, i) => (
+                    <div key={`acc-${i}`} className="bg-green-50/50 border border-green-100 rounded-lg p-3 text-xs text-slate-600 flex justify-between items-start group">
+                      <div className="flex-1 pr-2">{text}</div>
+                      <button 
+                        onClick={() => removeSuggestionDecision(i, 'accepted')}
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity flex-shrink-0"
+                        title="Remove from memory"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {resume.rejectedSuggestions && resume.rejectedSuggestions.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-red-700 flex items-center gap-2 mb-3">
+                  <X className="w-4 h-4" />
+                  Dismissed Changes ({resume.rejectedSuggestions.length})
+                </h4>
+                <div className="space-y-2">
+                  {resume.rejectedSuggestions.map((text, i) => (
+                    <div key={`rej-${i}`} className="bg-red-50/50 border border-red-100 rounded-lg p-3 text-xs text-slate-600 line-through opacity-70 flex justify-between items-start group">
+                      <div className="flex-1 pr-2">{text}</div>
+                      <button 
+                        onClick={() => removeSuggestionDecision(i, 'rejected')}
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity flex-shrink-0"
+                        title="Remove from memory"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
       
-      {/*  */}
     </aside>
   );
 }

@@ -138,7 +138,7 @@ function SpacingGap({ property, value, isSpacingMode, asLi, zoom = 1 }: { proper
   const content = (
     <div className="print:hidden" style={{ height: value, position: 'relative', width: '100%', lineHeight: 0, fontSize: 0 }}>
       <div 
-        className={`absolute inset-x-0 top-1/2 -translate-y-1/2 cursor-ns-resize z-50 flex items-center justify-center ${isDragging ? theme.hover : theme.bg + ' ' + theme.hover} ${value > 0 ? `border-y ${theme.border} border-dashed` : `bg-transparent border-t-2 ${theme.line}`} transition-colors`}
+        className={`absolute inset-x-0 top-1/2 -translate-y-1/2 cursor-ns-resize z-30 flex items-center justify-center ${isDragging ? theme.hover : theme.bg + ' ' + theme.hover} ${value > 0 ? `border-y ${theme.border} border-dashed` : `bg-transparent border-t-2 ${theme.line}`} transition-colors`}
         style={{ height: Math.max(value, 4), lineHeight: 0, fontSize: 0 }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMoveLocal}
@@ -163,9 +163,17 @@ function SpacingGap({ property, value, isSpacingMode, asLi, zoom = 1 }: { proper
 
 export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   const { 
-    resume, updatePersonalInfo, updateSection, pendingChanges, 
-    showOriginal, applyPendingChanges, discardPendingChanges, setShowOriginal,
-    activeSuggestionIdForChat, updateSuggestionStatus, setActiveSuggestionIdForChat
+    resume, 
+    updateSection, 
+    updatePersonalInfo, 
+    pendingChanges, 
+    chatMessages, 
+    setChatMessages,
+    showOriginal,
+    setShowOriginal,
+    recordSuggestionDecision,
+    acceptAiChanges,
+    discardAiChanges
   } = useResumeStore();
   const { toast } = useToast();
   const [itemHeights, setItemHeights] = useState<Record<string, number>>({});
@@ -183,21 +191,13 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
 
   const handleAccept = () => {
-    applyPendingChanges();
-    if (activeSuggestionIdForChat) {
-      updateSuggestionStatus(activeSuggestionIdForChat, 'accepted');
-      setActiveSuggestionIdForChat(null);
-    }
+    acceptAiChanges();
     toast({ title: "Changes Accepted", description: "Your resume has been updated." });
   };
 
   const handleDiscard = () => {
-    discardPendingChanges();
-    if (activeSuggestionIdForChat) {
-      updateSuggestionStatus(activeSuggestionIdForChat, 'rejected');
-      setActiveSuggestionIdForChat(null);
-    }
-    toast({ title: "Changes Discarded" });
+    discardAiChanges();
+    toast({ title: "Changes Discarded", description: "The resume has been reverted." });
   };
 
   useEffect(() => {
@@ -486,12 +486,23 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     // We only use sectionHighlightClass for summary since it's a single item block
     const sectionHighlightClass = isSectionChanged ? 'bg-green-100/50 outline outline-1 outline-green-400 rounded-md p-1 transition-all' : '';
 
+    if (!isFirstSection) {
+      elements.push({
+        id: `section-gap-${section.id}`,
+        type: 'gap',
+        content: (
+          <div key={`section-gap-wrapper-${section.id}`} data-measure-id={`section-gap-${section.id}`}>
+            <SpacingGap zoom={zoom} property="sectionGap" value={spacing.sectionGap} isSpacingMode={isSpacingMode} />
+          </div>
+        )
+      });
+    }
+
     elements.push({
       id: `section-title-${section.id}`,
       type: 'section-title',
       content: (
         <div key={`section-title-wrapper-${section.id}`} data-measure-id={`section-title-${section.id}`}>
-          {!isFirstSection && <SpacingGap zoom={zoom} property="sectionGap" value={spacing.sectionGap} isSpacingMode={isSpacingMode} />}
           <h2 className="font-bold uppercase tracking-widest text-black border-b border-black pb-1" style={{ fontSize: `${typography.headingSize}px` }}>
             <span className={`${editableClass} block w-full`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleSectionTitleBlur(section.id, e)}>
               {section.title}
@@ -628,11 +639,11 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                     <>
                       {hasHeader && <SpacingGap zoom={zoom} property="lineGap" value={spacing.lineGap} isSpacingMode={isSpacingMode} />}
                       {section.type === 'skills' ? (
-                        <div className="text-black" style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
+                        <div className={`text-black ${pendingChanges?.sections && !isNewItem && item.description.join(',') !== originalItem?.description?.join(',') ? highlightStr + ' p-1 inline-block' : ''}`} style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
                           {validDesc.map(({ desc, i }, idx) => (
                             <React.Fragment key={i}>
                               <span 
-                                className={`${isEditable ? 'hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors inline' : 'inline'} ${isDescChanged(i) ? highlightStr : ''}`}
+                                className={`${isEditable ? 'hover:outline-dashed hover:outline-1 hover:outline-slate-300 hover:bg-slate-50/50 cursor-text rounded-sm transition-colors inline' : 'inline'}`}
                                 contentEditable={isEditable} 
                                 suppressContentEditableWarning 
                                 onBlur={(e) => handleDescBlur(section.id, item.id, i, e)}
@@ -733,11 +744,21 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     }
 
     if (currentHeight + requiredHeight > maxAvailableHeightPx && pages[pages.length - 1].length > 0) {
-      pages.push([el.content]);
-      currentHeight = h;
+      if (el.type === 'gap') {
+        // Skip gap if it causes a page break
+        pages.push([]);
+        currentHeight = 0;
+      } else {
+        pages.push([el.content]);
+        currentHeight = h;
+      }
     } else {
-      pages[pages.length - 1].push(el.content);
-      currentHeight += h;
+      if (currentHeight === 0 && el.type === 'gap') {
+        // Skip gap if it's the very first element on a new page
+      } else {
+        pages[pages.length - 1].push(el.content);
+        currentHeight += h;
+      }
     }
   });
 
@@ -756,7 +777,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   return (
     <section className="flex-1 h-full bg-muted overflow-y-auto flex flex-col items-center relative" id="preview-container" onScroll={handleContainerScroll}>
       {/* Zoom Controls (Sticky Top) */}
-      <div className="sticky top-0 w-full z-[999] pointer-events-none" style={{ height: 0 }}>
+      <div className="sticky top-0 w-full z-40 pointer-events-none" style={{ height: 0 }}>
         <div 
           className={`absolute pointer-events-auto bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm rounded-full px-4 py-1.5 flex items-center gap-4 text-slate-700 transition-all ${
             showRuler ? "top-4 left-4" : "top-4 left-1/2 -translate-x-1/2"

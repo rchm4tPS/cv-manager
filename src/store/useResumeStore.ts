@@ -3,9 +3,11 @@ import { Resume, DocumentSettings, Section, AnalysisResult, AnalysisMode, ChatMe
 
 interface ResumeStore {
   resume: Resume;
-  tailoringJob: { id: string; company: string; position: string; description: string } | null;
+  appTheme: 'default' | 'anthropic';
+  setAppTheme: (theme: 'default' | 'anthropic') => void;
+  tailoringJob: { id: string; company: string; position: string; description?: string } | null;
   setResume: (resume: Resume) => void;
-  setTailoringJob: (job: { id: string; company: string; position: string; description: string } | null) => void;
+  setTailoringJob: (job: { id: string; company: string; position: string; description?: string } | null) => void;
   updatePersonalInfo: (info: Partial<Resume['personalInfo']>) => void;
   updateSettings: (settings: Partial<DocumentSettings>) => void;
   addSection: (section: Section) => void;
@@ -16,6 +18,8 @@ interface ResumeStore {
   updateTitle: (title: string) => void;
   isDirty: boolean;
   setIsDirty: (dirty: boolean) => void;
+  recordSuggestionDecision: (suggestionText: string, decision: 'accepted' | 'rejected') => void;
+  removeSuggestionDecision: (index: number, decision: 'accepted' | 'rejected') => void;
   // AI Analysis State
   analysisResult: AnalysisResult | null;
   setAnalysisResult: (result: AnalysisResult | null) => void;
@@ -37,6 +41,8 @@ interface ResumeStore {
   setActiveSuggestionIdForChat: (id: string | null) => void;
   applyPendingChanges: () => void;
   discardPendingChanges: () => void;
+  acceptAiChanges: () => void;
+  discardAiChanges: () => void;
   // AI Suggestions Checklist
   editorSuggestions: EditorSuggestion[];
   setEditorSuggestions: (suggestions: EditorSuggestion[]) => void;
@@ -100,6 +106,18 @@ const blankResume: Resume = {
   updatedAt: new Date().toISOString(),
 };
 
+const getInitialTailoringJob = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = sessionStorage.getItem('tailoringJob');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 export const useResumeStore = create<ResumeStore>((set, get) => {
   let debounceTimeout: NodeJS.Timeout;
   let lastSnapshot: Resume | null = null;
@@ -126,13 +144,16 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
 
   return {
   resume: defaultResume,
-  tailoringJob: null,
+  tailoringJob: getInitialTailoringJob(),
   isDirty: false,
   setIsDirty: (dirty) => set({ isDirty: dirty }),
   setResume: (resume) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const newSuggestions: any[] = [];
     if (resume.analysisResult && resume.analysisResult.steps) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       resume.analysisResult.steps.forEach((step: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         step.recommendations.forEach((rec: any) => {
           if (!rec.suggestionId) {
             rec.suggestionId = Math.random().toString(36).substring(2, 9);
@@ -167,7 +188,57 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       activeSuggestionIdForChat: null
     });
   },
-  setTailoringJob: (job) => set({ tailoringJob: job }),
+  setTailoringJob: (job) => {
+    if (typeof window !== 'undefined') {
+      if (job) {
+        sessionStorage.setItem('tailoringJob', JSON.stringify(job));
+      } else {
+        sessionStorage.removeItem('tailoringJob');
+      }
+    }
+    set({ tailoringJob: job });
+  },
+
+  recordSuggestionDecision: (suggestionText: string, decision: 'accepted' | 'rejected') => {
+    set((state) => {
+      const resume = state.resume;
+      if (!resume) return {};
+      
+      const updatedResume = { ...resume };
+      
+      if (decision === 'accepted') {
+        updatedResume.acceptedSuggestions = [...(resume.acceptedSuggestions || []), suggestionText];
+      } else {
+        updatedResume.rejectedSuggestions = [...(resume.rejectedSuggestions || []), suggestionText];
+      }
+      
+      return {
+        resume: updatedResume,
+        isDirty: true
+      };
+    });
+  },
+
+  removeSuggestionDecision: (index: number, decision: 'accepted' | 'rejected') => {
+    set((state) => {
+      const resume = state.resume;
+      if (!resume) return {};
+      
+      const updatedResume = { ...resume };
+      
+      if (decision === 'accepted' && updatedResume.acceptedSuggestions) {
+        updatedResume.acceptedSuggestions = updatedResume.acceptedSuggestions.filter((_, i) => i !== index);
+      } else if (decision === 'rejected' && updatedResume.rejectedSuggestions) {
+        updatedResume.rejectedSuggestions = updatedResume.rejectedSuggestions.filter((_, i) => i !== index);
+      }
+      
+      return {
+        resume: updatedResume,
+        isDirty: true
+      };
+    });
+  },
+
   // AI Analysis Init
   analysisResult: null,
   setAnalysisResult: (result) => set((state) => ({ 
@@ -261,6 +332,9 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   analysisCooldownUntil: null,
   setAnalysisCooldownUntil: (time) => set({ analysisCooldownUntil: time }),
 
+  appTheme: 'default',
+  setAppTheme: (theme) => set({ appTheme: theme }),
+
   // Methods
   updatePersonalInfo: (info) =>
     setWithHistory((state) => ({
@@ -321,6 +395,97 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       },
       isDirty: true,
     })),
+
+  acceptAiChanges: () => set((state) => {
+    // Record decisions for all AI messages since the last divider
+    let updatedResume = { ...state.resume };
+    const updatedChatMessages = [...state.chatMessages];
+    for (let i = updatedChatMessages.length - 1; i >= 0; i--) {
+      const msg = updatedChatMessages[i];
+      if (msg.type === 'divider') break;
+      if (msg.role === 'ai') {
+        const suggestionText = msg.thought || msg.text;
+        // Ignore the initial greeting message
+        if (suggestionText && !suggestionText.includes("Hi there! I can help you improve your resume")) {
+          const accepted = updatedResume.acceptedSuggestions || [];
+          if (!accepted.includes(suggestionText)) {
+            updatedResume = { ...updatedResume, acceptedSuggestions: [...accepted, suggestionText] };
+          }
+        }
+        // Update the visual status in the chat pane
+        updatedChatMessages[i] = { ...msg, status: 'accepted' };
+      }
+    }
+
+    // Apply pending changes
+    if (state.pendingChanges) {
+      updatedResume = { ...updatedResume, ...state.pendingChanges };
+    }
+
+    // Update active suggestion if needed
+    let updatedSuggestions = state.editorSuggestions;
+    if (state.activeSuggestionIdForChat) {
+      updatedSuggestions = state.editorSuggestions.map((s) => 
+        s.id === state.activeSuggestionIdForChat ? { ...s, status: 'accepted' as const } : s
+      );
+    }
+
+    return {
+      resume: updatedResume,
+      pendingChanges: null,
+      showOriginal: false,
+      editorSuggestions: updatedSuggestions,
+      activeSuggestionIdForChat: null,
+      chatMessages: [
+        ...updatedChatMessages,
+        { role: "system", type: "divider", text: "Changes accepted. Context cleared." }
+      ],
+      isDirty: true
+    };
+  }),
+
+  discardAiChanges: () => set((state) => {
+    // Record decisions for all AI messages since the last divider
+    let updatedResume = { ...state.resume };
+    const updatedChatMessages = [...state.chatMessages];
+    for (let i = updatedChatMessages.length - 1; i >= 0; i--) {
+      const msg = updatedChatMessages[i];
+      if (msg.type === 'divider') break;
+      if (msg.role === 'ai') {
+        const suggestionText = msg.thought || msg.text;
+        // Ignore the initial greeting message
+        if (suggestionText && !suggestionText.includes("Hi there! I can help you improve your resume")) {
+          const rejected = updatedResume.rejectedSuggestions || [];
+          if (!rejected.includes(suggestionText)) {
+            updatedResume = { ...updatedResume, rejectedSuggestions: [...rejected, suggestionText] };
+          }
+        }
+        // Update the visual status in the chat pane
+        updatedChatMessages[i] = { ...msg, status: 'rejected' };
+      }
+    }
+
+    // Update active suggestion if needed
+    let updatedSuggestions = state.editorSuggestions;
+    if (state.activeSuggestionIdForChat) {
+      updatedSuggestions = state.editorSuggestions.map((s) => 
+        s.id === state.activeSuggestionIdForChat ? { ...s, status: 'rejected' as const } : s
+      );
+    }
+
+    return {
+      resume: updatedResume,
+      pendingChanges: null,
+      showOriginal: false,
+      editorSuggestions: updatedSuggestions,
+      activeSuggestionIdForChat: null,
+      chatMessages: [
+        ...updatedChatMessages,
+        { role: "system", type: "divider", text: "Changes discarded. Context cleared." }
+      ],
+      isDirty: true // technically we just mutated rejectedSuggestions so it is dirty
+    };
+  }),
   
   // History Methods
   pastStates: [],

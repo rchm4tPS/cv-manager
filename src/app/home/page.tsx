@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation";
 import { supabaseApi } from "@/lib/supabase-api";
 import { Resume } from "@/types/resume";
 import { Button } from "@/components/ui/button";
-import { FileText, Plus, Upload, Loader2, Clock, Trash2 } from "lucide-react";
+import { FileText, Plus, Upload, Loader2, Clock, Trash2, Sparkles } from "lucide-react";
+import { useResumeStore } from "@/store/useResumeStore";
 
 export default function HomePage() {
   const router = useRouter();
-  // const { initBlankResume, setResume } = useResumeStore();
+  const { setTailoringJob } = useResumeStore();
   const [recentResumes, setRecentResumes] = useState<Resume[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [filterType, setFilterType] = useState<'all' | 'master' | 'tailored'>('all');
 
   useEffect(() => {
     async function loadHistory() {
@@ -36,6 +38,7 @@ export default function HomePage() {
   };
 
   const handleOpenResume = (resume: Resume) => {
+    setTailoringJob(null);
     router.push(`/editor/${resume.id}`);
   };
 
@@ -54,7 +57,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col p-8 md:p-12 overflow-auto">
+    <div className="flex-1 bg-muted/10 flex flex-col p-8 md:p-12 overflow-auto">
       <div className="max-w-4xl w-full mx-auto space-y-10">
         
         {/* Header Section */}
@@ -89,9 +92,32 @@ export default function HomePage() {
 
         {/* History Section */}
         <div>
-          <div className="flex items-center gap-2 mb-6">
-            <Clock className="w-5 h-5 text-slate-400" />
-            <h2 className="text-xl font-semibold text-slate-800">Recent Resumes</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-slate-400" />
+              <h2 className="text-xl font-semibold text-slate-800">Recent Resumes</h2>
+            </div>
+            
+            <div className="flex items-center bg-slate-100 p-1 rounded-lg">
+              <button 
+                onClick={() => setFilterType('all')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${filterType === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                All
+              </button>
+              <button 
+                onClick={() => setFilterType('master')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${filterType === 'master' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Master
+              </button>
+              <button 
+                onClick={() => setFilterType('tailored')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${filterType === 'tailored' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Tailored
+              </button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -100,17 +126,39 @@ export default function HomePage() {
             </div>
           ) : recentResumes.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {recentResumes.map((resume) => (
+              {recentResumes
+                .filter(r => {
+                  if (filterType === 'master') return !r.tailoringJob;
+                  if (filterType === 'tailored') return !!r.tailoringJob;
+                  return true;
+                })
+                .map((resume) => (
                 <div
                   key={resume.id}
                   onClick={() => handleOpenResume(resume)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleOpenResume(resume); }}
-                  className="flex flex-col text-left p-5 bg-white border border-slate-200 rounded-xl hover:shadow-md hover:border-slate-300 transition-all cursor-pointer"
+                  className="flex flex-col text-left p-5 bg-white border border-slate-200 rounded-xl hover:shadow-md hover:border-slate-300 transition-all cursor-pointer relative"
                 >
                   <div className="flex items-start justify-between w-full mb-3">
-                    <FileText className="w-8 h-8 text-blue-500" />
+                    {resume.tailoringJob ? (
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                          Tailored
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-8 h-8 text-blue-500" />
+                        <span className="text-[10px] font-bold uppercase tracking-wide bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                          Master
+                        </span>
+                      </div>
+                    )}
                     <button 
                       onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(resume.id); }}
                       className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
@@ -122,8 +170,13 @@ export default function HomePage() {
                   <h3 className="font-semibold text-slate-900 truncate w-full mb-1">
                     {resume.title || "Untitled Resume"}
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Last updated {new Date(resume.updatedAt).toLocaleDateString()}
+                  {resume.tailoringJob && (
+                    <p className="text-xs text-emerald-600 font-medium truncate mb-0.5">
+                      {resume.tailoringJob.position} at {resume.tailoringJob.company}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-slate-400 mt-auto pt-2">
+                    Updated {new Date(resume.updatedAt).toLocaleDateString()}
                   </p>
                 </div>
               ))}
