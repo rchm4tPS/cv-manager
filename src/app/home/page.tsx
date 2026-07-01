@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { supabaseApi } from "@/lib/supabase-api";
 import { Resume } from "@/types/resume";
 import { Button } from "@/components/ui/button";
-import { FileText, Plus, Upload, Loader2, Clock, Trash2 } from "lucide-react";
+import { FileText, Plus, Upload, Loader2, Clock, Trash2, Sparkles } from "lucide-react";
+import { useResumeStore } from "@/store/useResumeStore";
 
 export default function HomePage() {
   const router = useRouter();
-  // const { initBlankResume, setResume } = useResumeStore();
+  const { tailoringJob, setTailoringJob } = useResumeStore();
   const [recentResumes, setRecentResumes] = useState<Resume[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -62,6 +63,21 @@ export default function HomePage() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Welcome to CV Manager</h1>
           <p className="text-muted-foreground text-lg">Create, manage, and tailor your professional resumes.</p>
         </div>
+
+        {/* Tailoring Context Banner */}
+        {tailoringJob && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3 text-blue-800">
+               <Sparkles className="w-6 h-6 shrink-0" />
+               <p className="font-medium text-sm md:text-base">
+                 Select a resume below to begin tailoring for <span className="font-bold">{tailoringJob.position}</span> at <span className="font-bold">{tailoringJob.company}</span>.
+               </p>
+            </div>
+            <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 shrink-0" onClick={() => setTailoringJob(null)}>
+              Cancel Tailoring
+            </Button>
+          </div>
+        )}
 
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

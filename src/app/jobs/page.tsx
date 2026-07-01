@@ -2,11 +2,20 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Pencil, Trash2, ExternalLink, Calendar as CalendarIcon, FileText } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useResumeStore } from "@/store/useResumeStore";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Resume } from "@/types/resume";
 
 export interface Job {
   id: string;
@@ -16,6 +25,7 @@ export interface Job {
   status: string;
   link: string;
   dateAdded: string;
+  dateApplied?: string;
   description: string;
 }
 
@@ -25,9 +35,10 @@ export default function JobsPage() {
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [formData, setFormData] = useState({
-    company: "", position: "", location: "", status: "saved", link: "", description: ""
+    company: "", position: "", location: "", status: "saved", link: "", description: "", dateApplied: undefined as Date | undefined
   });
 
   // Delete Overlay State
@@ -35,6 +46,11 @@ export default function JobsPage() {
 
   // Expandable Rows State
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+
+  // Tailor Modal State
+  const [tailorModalJob, setTailorModalJob] = useState<Job | null>(null);
+  const [recentResumes, setRecentResumes] = useState<Resume[]>([]);
+  const [loadingResumes, setLoadingResumes] = useState(false);
 
   const router = useRouter();
   const { setTailoringJob } = useResumeStore();
@@ -59,7 +75,7 @@ export default function JobsPage() {
 
   const openAddModal = () => {
     setEditingJob(null);
-    setFormData({ company: "", position: "", location: "", status: "saved", link: "", description: "" });
+    setFormData({ company: "", position: "", location: "", status: "saved", link: "", description: "", dateApplied: undefined });
     setIsModalOpen(true);
   };
 
@@ -67,7 +83,8 @@ export default function JobsPage() {
     setEditingJob(job);
     setFormData({ 
       company: job.company, position: job.position, location: job.location || "", 
-      status: job.status, link: job.link || "", description: job.description || "" 
+      status: job.status, link: job.link || "", description: job.description || "",
+      dateApplied: job.dateApplied ? new Date(job.dateApplied) : undefined
     });
     setIsModalOpen(true);
   };
@@ -79,10 +96,12 @@ export default function JobsPage() {
     }
 
     try {
+      const { dateApplied, ...restFormData } = formData;
       const jobToSave = {
         id: editingJob ? editingJob.id : `temp-${Date.now()}`,
         dateAdded: editingJob ? editingJob.dateAdded : new Date().toLocaleDateString(),
-        ...formData
+        dateApplied: dateApplied ? dateApplied.toISOString() : undefined,
+        ...restFormData
       };
       
       await supabaseApi.saveJob(jobToSave);
@@ -107,11 +126,47 @@ export default function JobsPage() {
     }
   };
 
-  const handleTailor = (job: Job) => {
-    setTailoringJob({
-      id: job.id, company: job.company, position: job.position, description: job.description || ""
-    });
-    router.push("/");
+  const handleTailor = async (job: Job) => {
+    setTailorModalJob(job);
+    setLoadingResumes(true);
+    try {
+      const data = await supabaseApi.getResumes();
+      if (data) setRecentResumes(data);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to load resumes", variant: "destructive" });
+    } finally {
+      setLoadingResumes(false);
+    }
+  };
+
+  const handleSelectResumeForTailoring = async (resumeId: string) => {
+    if (!tailorModalJob) return;
+    
+    try {
+      // 1. Fetch original resume
+      const original = await supabaseApi.getResumeById(resumeId);
+      if (!original) throw new Error("Resume not found");
+
+      // 2. Duplicate it
+      const duplicate: Resume = {
+        ...original,
+        id: 'new',
+        title: `${original.title || 'Untitled'} - Tailored for ${tailorModalJob.company}`,
+        analysisResult: undefined, // Wipe out generic analysis!
+      };
+
+      // 3. Save duplicate
+      const saved = await supabaseApi.saveResume(duplicate);
+
+      // 4. Set context and navigate
+      setTailoringJob({
+        id: tailorModalJob.id, company: tailorModalJob.company, position: tailorModalJob.position, description: tailorModalJob.description || ""
+      });
+      router.push(`/editor/${saved.id}`);
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Error", description: "Failed to prepare tailored resume", variant: "destructive" });
+    }
   };
 
   const toggleExpand = (jobId: string) => {
@@ -157,7 +212,7 @@ export default function JobsPage() {
                   <th className="px-6 py-4 font-medium">Company</th>
                   <th className="px-6 py-4 font-medium">Location</th>
                   <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Date Added</th>
+                  <th className="px-6 py-4 font-medium">Date Applied</th>
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -180,8 +235,16 @@ export default function JobsPage() {
                             {job.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-muted-foreground">{job.dateAdded || "-"}</td>
-                        <td className="px-6 py-4 text-right flex justify-end gap-2">
+                        <td className="px-6 py-4 text-muted-foreground">
+                          {job.dateApplied ? format(new Date(job.dateApplied), "MMM d, yyyy") : "-"}
+                        </td>
+                        <td className="px-6 py-4 text-right flex justify-end gap-2 items-center">
+                          {job.link && (
+                            <a href={job.link} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "link", size: "sm" }), "h-8 px-2 text-blue-600")}>
+                              <ExternalLink className="w-3 h-3 mr-1" />
+                              View Posting
+                            </a>
+                          )}
                           <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => toggleExpand(job.id)}>
                             {expandedJobs.has(job.id) ? "▲" : "▼"}
                           </Button>
@@ -265,6 +328,44 @@ export default function JobsPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Source Link</label>
+                  <input 
+                    type="url" className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                    placeholder="https://..."
+                    value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Date Applied</label>
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <PopoverTrigger render={
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full h-9 justify-start text-left font-normal px-3",
+                          !formData.dateApplied && "text-muted-foreground"
+                        )}
+                      />
+                    }>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.dateApplied ? format(formData.dateApplied, "PPP") : <span>Pick a date</span>}
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.dateApplied}
+                        onSelect={(date) => {
+                          setFormData({...formData, dateApplied: date});
+                          setIsCalendarOpen(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase">Job Description</label>
                 <textarea 
@@ -292,6 +393,42 @@ export default function JobsPage() {
             <div className="flex justify-center gap-3 mt-4">
               <Button variant="outline" onClick={() => setJobToDelete(null)}>Cancel</Button>
               <Button variant="destructive" onClick={executeDelete}>Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tailor Selection Modal */}
+      {tailorModalJob && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 flex flex-col max-h-[80vh]">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Tailor for {tailorModalJob.company}</h3>
+            <p className="text-slate-500 mb-4 text-sm">Select a resume to begin tailoring it for the {tailorModalJob.position} role.</p>
+            
+            <div className="flex-1 overflow-y-auto space-y-2 mb-6">
+              {loadingResumes ? (
+                <div className="text-center text-slate-500 py-4">Loading resumes...</div>
+              ) : recentResumes.length > 0 ? (
+                recentResumes.map(resume => (
+                  <button
+                    key={resume.id}
+                    onClick={() => handleSelectResumeForTailoring(resume.id)}
+                    className="w-full text-left p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg transition-colors flex justify-between items-center group cursor-pointer"
+                  >
+                    <div>
+                      <h4 className="font-semibold text-slate-900">{resume.title || "Untitled Resume"}</h4>
+                      <p className="text-xs text-slate-500">Last updated: {new Date(resume.updatedAt).toLocaleDateString()}</p>
+                    </div>
+                    <span className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium">Select →</span>
+                  </button>
+                ))
+              ) : (
+                <div className="text-center text-slate-500 py-4">No resumes found. Please create one first!</div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100 shrink-0">
+              <Button variant="outline" onClick={() => setTailorModalJob(null)}>Cancel</Button>
             </div>
           </div>
         </div>

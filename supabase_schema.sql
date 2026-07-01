@@ -27,6 +27,7 @@ CREATE TABLE jobs (
   status TEXT NOT NULL DEFAULT 'saved', -- saved, applied, interviewed, offered, rejected
   link TEXT,
   date_added TEXT,
+  date_applied TEXT,
   description TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

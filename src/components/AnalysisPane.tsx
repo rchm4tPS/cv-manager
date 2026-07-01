@@ -20,7 +20,9 @@ export function AnalysisPane() {
     setEditorSuggestions,
     analysisCooldownUntil,
     setPendingAiMessage,
-    setActiveSuggestionIdForChat
+    setActiveSuggestionIdForChat,
+    tailoringJob,
+    setTailoringJob
   } = useResumeStore();
   const { toast } = useToast();
   const [analyzing, setAnalyzing] = useState(false);
@@ -46,7 +48,7 @@ export function AnalysisPane() {
       const res = await fetch('/api/analyze-cv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume })
+        body: JSON.stringify({ resume, tailoringJob })
       });
       const data = await res.json();
       if (data.success) {
@@ -92,6 +94,9 @@ export function AnalysisPane() {
       case 'summary': return <Lightbulb className="w-5 h-5 text-emerald-500" />;
       case 'experiences': return <CheckSquare className="w-5 h-5 text-blue-500" />;
       case 'format': return <Eye className="w-5 h-5 text-indigo-500" />;
+      case 'keywords': return <Sparkles className="w-5 h-5 text-purple-500" />;
+      case 'summary-match': return <Target className="w-5 h-5 text-emerald-500" />;
+      case 'experience-match': return <CheckSquare className="w-5 h-5 text-blue-500" />;
       default: return <Target className="w-5 h-5" />;
     }
   };
@@ -102,9 +107,18 @@ export function AnalysisPane() {
       case 'summary': return "bg-emerald-50";
       case 'experiences': return "bg-blue-50";
       case 'format': return "bg-indigo-50";
+      case 'keywords': return "bg-purple-50";
+      case 'summary-match': return "bg-emerald-50";
+      case 'experience-match': return "bg-blue-50";
       default: return "bg-slate-50";
     }
   };
+
+  const TailoringBanner = tailoringJob ? (
+    <div className="bg-blue-50 text-blue-700 text-xs px-3 py-1.5 rounded-full inline-flex font-medium mb-4 border border-blue-100 flex items-center justify-center shrink-0 mx-auto max-w-fit">
+      ✨ Tailoring for {tailoringJob.position}
+    </div>
+  ) : null;
 
   if (!analysisResult) {
     return (
@@ -114,6 +128,9 @@ export function AnalysisPane() {
             <Lightbulb className="w-8 h-8" />
           </div>
           <h2 className="text-xl font-semibold mb-2">Resume Analysis</h2>
+          
+          {TailoringBanner}
+
           <p className="text-sm text-slate-500 mb-8">
             Get an ATS score and actionable AI feedback to improve your CV instantly.
           </p>
@@ -131,7 +148,7 @@ export function AnalysisPane() {
                   ? "Review inline suggestions first" 
                   : isCooldownActive 
                     ? `Wait ${cooldownRemaining}s before re-analyzing` 
-                    : "Analyze CV"}
+                    : (tailoringJob ? "Analyze for this Job" : "Analyze CV")}
           </Button>
         </div>
       </aside>
@@ -150,6 +167,8 @@ export function AnalysisPane() {
     return (
       <aside className="w-full h-full bg-slate-50/50 p-4 md:p-6 flex flex-col overflow-hidden min-h-0 min-w-0">
         
+        {TailoringBanner}
+
         {/* Header Header */}
         <div className="flex items-start md:items-center gap-2 md:gap-4 mb-4 shrink-0 min-w-0">
           <Button 
@@ -322,6 +341,10 @@ export function AnalysisPane() {
   // Overview Mode (Screenshot 1)
   return (
     <aside className="w-full h-full bg-slate-50/50 p-4 md:p-6 overflow-y-auto space-y-6 md:space-y-8 overflow-x-hidden">
+      <div className="flex justify-center">
+        {TailoringBanner}
+      </div>
+
       {/* Top Banner */}
       <div className="bg-white rounded-3xl p-4 md:p-6 border shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-4">
@@ -383,7 +406,7 @@ export function AnalysisPane() {
                 ? "Review inline suggestions first" 
                 : isCooldownActive 
                   ? `Wait ${cooldownRemaining}s before re-analyzing` 
-                  : "Re-Analyze CV"}
+                  : (tailoringJob ? "Re-Analyze for Job" : "Re-Analyze CV")}
         </Button>
       </div>
 

@@ -100,6 +100,18 @@ const blankResume: Resume = {
   updatedAt: new Date().toISOString(),
 };
 
+const getInitialTailoringJob = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = sessionStorage.getItem('tailoringJob');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 export const useResumeStore = create<ResumeStore>((set, get) => {
   let debounceTimeout: NodeJS.Timeout;
   let lastSnapshot: Resume | null = null;
@@ -126,7 +138,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
 
   return {
   resume: defaultResume,
-  tailoringJob: null,
+  tailoringJob: getInitialTailoringJob(),
   isDirty: false,
   setIsDirty: (dirty) => set({ isDirty: dirty }),
   setResume: (resume) => {
@@ -167,7 +179,16 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       activeSuggestionIdForChat: null
     });
   },
-  setTailoringJob: (job) => set({ tailoringJob: job }),
+  setTailoringJob: (job) => {
+    if (typeof window !== 'undefined') {
+      if (job) {
+        sessionStorage.setItem('tailoringJob', JSON.stringify(job));
+      } else {
+        sessionStorage.removeItem('tailoringJob');
+      }
+    }
+    set({ tailoringJob: job });
+  },
   // AI Analysis Init
   analysisResult: null,
   setAnalysisResult: (result) => set((state) => ({ 
