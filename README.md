@@ -26,8 +26,9 @@ If you are looking for a developer who can:
 ## ✨ Key Features
 
 - 🧠 **AI-Powered Resume Tailoring:** Integrates with the Google Gemini API to analyze job descriptions and automatically suggest tailored improvements to your resume.
+- 💡 **Interactive AI Chat & Query Suggestions:** Engage with the AI via a built-in chat pane, featuring ATS-focused query suggestions for quick and effective resume refinement.
 - 🎨 **Interactive Resume Builder:** A fully reactive editor using Zustand for state management, allowing users to drag, drop, and edit resume sections in real-time with a live preview.
-- 📄 **PDF Parsing:** Upload existing resumes (PDFs) and automatically parse the data into editable digital formats.
+- 📄 **PDF Parsing (coming soon):** Upload existing resumes (PDFs) and automatically parse the data into editable digital formats.
 - 💼 **Job Application Tracker:** A built-in CRM for your job hunt. Track positions, companies, statuses (Applied, Interviewing, Offered), and link them directly to specific resume versions.
 - ⚡ **Serverless Backend Architecture:** Powered by Supabase for instantaneous, secure data syncing across devices using Row Level Security (RLS).
 
