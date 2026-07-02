@@ -3,18 +3,20 @@
 import { useToastStore } from "@/hooks/use-toast";
 
 export function Toaster() {
-  const { toasts, removeToast } = useToastStore();
+  const { toasts, closeToast } = useToastStore();
 
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
+    <div className="fixed top-4 right-4 z-[10060] flex flex-col gap-2">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`relative p-4 w-80 rounded-md shadow-lg border pointer-events-auto transition-all animate-in slide-in-from-right-full ${
+          className={`relative p-4 w-80 rounded-md shadow-lg border pointer-events-auto transition-all duration-300 ${
+            toast.isClosing ? "animate-out slide-out-to-right-full fade-out" : "animate-in slide-in-from-right-full fade-in"
+          } ${
             toast.variant === "destructive"
-              ? "bg-destructive text-destructive-foreground border-destructive"
+              ? "bg-rose-50 text-rose-800 border-rose-200"
               : "bg-background text-foreground"
           }`}
         >
@@ -26,7 +28,7 @@ export function Toaster() {
               )}
             </div>
             <button
-              onClick={() => removeToast(toast.id)}
+              onClick={() => closeToast(toast.id)}
               className="text-muted-foreground hover:text-foreground opacity-50 hover:opacity-100"
             >
               ✕

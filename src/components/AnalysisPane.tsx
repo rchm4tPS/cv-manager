@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { useResumeStore } from "@/store/useResumeStore";
 import { Loader2, ChevronRight, ArrowLeft, Target, CheckCircle2, Lightbulb, CheckSquare, Eye, ArrowRight, ChevronLeft, Sparkles, Check, X, Briefcase, GraduationCap, FolderDot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { TailorJobModal } from "./TailorJobModal";
+import { useRouter } from "next/navigation";
+import { supabaseApi } from "@/lib/supabase-api";
 
 export function AnalysisPane() {
   const { 
@@ -27,6 +30,9 @@ export function AnalysisPane() {
   const { toast } = useToast();
   const [analyzing, setAnalyzing] = useState(false);
   const [now, setNow] = useState(0);
+  const [isTailorModalOpen, setIsTailorModalOpen] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const router = useRouter();
 
   // Update timer for cooldown every second
   useEffect(() => {
@@ -48,6 +54,48 @@ export function AnalysisPane() {
   const isFullyTailored = !!(tailoringJob && isPerfect);
   const isFullyOptimized = !!(!tailoringJob && isPerfect);
   const displayScore = isPerfect && analysisResult ? 100 : (analysisResult?.score || 0);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleTailorToJob = async (job: any) => {
+    setIsDuplicating(true);
+    try {
+      // 1. Create duplicated resume object with id 'new' and tailoringJob attached
+      const duplicatedResume = {
+        ...resume,
+        id: 'new', // Instructs supabaseApi.saveResume to let DB generate new UUID
+        title: `${resume.title} - ${job.company}`,
+        analysisResult: undefined,
+        acceptedSuggestions: undefined,
+        rejectedSuggestions: undefined,
+        tailoringJob: {
+          id: job.id,
+          company: job.company,
+          position: job.position,
+          description: job.description
+        }
+      };
+
+      // 2. Save to Supabase to get the generated UUID
+      const savedResume = await supabaseApi.saveResume(duplicatedResume);
+      
+      // 3. Close modal and redirect to new editor instance
+      setIsTailorModalOpen(false);
+      toast({
+        title: "CV Tailored Successfully",
+        description: "Redirecting to your new tailored CV...",
+      });
+      router.push(`/editor/${savedResume.id}`);
+    } catch (error: unknown) {
+      console.error("Failed to tailor CV:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create tailored CV",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
 
   const runAnalysis = async () => {
     setAnalyzing(true);
@@ -515,6 +563,37 @@ export function AnalysisPane() {
             </div>
           </div>
         ))}
+
+        {!resume.tailoringJob && (
+          <div 
+            onClick={() => setIsTailorModalOpen(true)}
+            className="bg-white border rounded-3xl p-4 flex flex-col @md:flex-row items-start @md:items-center justify-between cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group gap-4 min-w-0"
+          >
+            <div className="flex items-start md:items-center gap-3 md:gap-4 flex-1 min-w-0 w-full">
+              <div className="flex items-center justify-center flex-col">
+                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-sm shrink-0">
+                  {(analysisResult?.steps?.length || 0) + 1}
+                </div>
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 ml-[-6px] mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+                    Optional
+                  </span>
+                </div>
+                <h4 className="font-bold text-slate-800 text-base md:text-lg leading-tight break-words mb-1">Tailor this CV to a Job</h4>
+                <p className="text-xs md:text-sm text-slate-500 pr-0 md:pr-4 break-words whitespace-normal line-clamp-3 md:line-clamp-2">Duplicate this master CV and optimize it for a specific job application to boost your chances.</p>
+              </div>
+            </div>
+            
+            <div className="w-full @md:w-auto flex justify-end">
+              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors shrink-0">
+                <ChevronRight className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {(resume.acceptedSuggestions?.length || resume.rejectedSuggestions?.length) ? (
@@ -576,6 +655,12 @@ export function AnalysisPane() {
         </div>
       ) : null}
       
+      <TailorJobModal
+        isOpen={isTailorModalOpen}
+        onClose={() => setIsTailorModalOpen(false)}
+        onSelectJob={handleTailorToJob}
+        isDuplicating={isDuplicating}
+      />
     </aside>
   );
 }
