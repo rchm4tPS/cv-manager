@@ -85,11 +85,11 @@ export function AnalysisPane() {
         description: "Redirecting to your new tailored CV...",
       });
       router.push(`/editor/${savedResume.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to tailor CV:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create tailored CV",
+        description: error instanceof Error ? error.message : "Failed to create tailored CV",
         variant: "destructive"
       });
     } finally {

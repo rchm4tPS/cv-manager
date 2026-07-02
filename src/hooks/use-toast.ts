@@ -5,11 +5,13 @@ export interface Toast {
   title?: string;
   description?: string;
   variant?: 'default' | 'destructive';
+  isClosing?: boolean;
 }
 
 interface ToastStore {
   toasts: Toast[];
-  addToast: (toast: Omit<Toast, 'id'>) => void;
+  addToast: (toast: Omit<Toast, 'id' | 'isClosing'>) => void;
+  closeToast: (id: string) => void;
   removeToast: (id: string) => void;
 }
 
@@ -21,8 +23,22 @@ export const useToastStore = create<ToastStore>((set) => ({
     
     // Auto remove after 5 seconds
     setTimeout(() => {
-      set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+      set((state) => {
+        // We can just call the close logic
+        const current = state.toasts.find(t => t.id === id);
+        if (current && !current.isClosing) {
+          setTimeout(() => set(s => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 300);
+          return { toasts: state.toasts.map(t => t.id === id ? { ...t, isClosing: true } : t) };
+        }
+        return state;
+      });
     }, 5000);
+  },
+  closeToast: (id) => {
+    set((state) => ({ toasts: state.toasts.map(t => t.id === id ? { ...t, isClosing: true } : t) }));
+    setTimeout(() => {
+      set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+    }, 300); // 300ms matches the animate-out duration
   },
   removeToast: (id) =>
     set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),

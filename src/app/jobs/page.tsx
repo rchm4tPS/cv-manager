@@ -8,45 +8,24 @@ import { supabaseApi } from "@/lib/supabase-api";
 import { useResumeStore } from "@/store/useResumeStore";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { Resume } from "@/types/resume";
-
-export interface Job {
-  id: string;
-  company: string;
-  position: string;
-  location: string;
-  status: string;
-  link: string;
-  dateAdded: string;
-  dateApplied?: string;
-  description: string;
-}
+import { AddJobModal, Job } from "@/components/AddJobModal";
+import { cn } from "@/lib/utils";
 
 export default function JobsPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const { setTailoringJob } = useResumeStore();
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
-  
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [editingJob, setEditingJob] = useState<Job | null>(null);
-  const [formData, setFormData] = useState({
-    company: "", position: "", location: "", status: "saved", link: "", description: "", dateApplied: undefined as Date | undefined
-  });
-
-  // Delete Overlay State
-  const [jobToDelete, setJobToDelete] = useState<string | null>(null);
-
-  // Expandable Rows State
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [jobToDelete, setJobToDelete] = useState<string | null>(null);
 
   const [tailorModalJob, setTailorModalJob] = useState<Job | null>(null);
   const [recentResumes, setRecentResumes] = useState<Resume[]>([]);
@@ -54,10 +33,6 @@ export default function JobsPage() {
 
   // Dashboard State
   const [isDashboardOpen, setIsDashboardOpen] = useState(true);
-
-  const router = useRouter();
-  const { setTailoringJob } = useResumeStore();
-  const { toast } = useToast();
 
   const loadJobs = async (isInitial = false) => {
     if (!isInitial) setLoading(true);
@@ -72,7 +47,7 @@ export default function JobsPage() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
     loadJobs(true);
   }, []);
@@ -101,7 +76,7 @@ export default function JobsPage() {
       else if (job.status === 'offered') offerCount++;
       else if (job.status === 'rejected') rejectedCount++;
 
-      if (job.dateApplied) {
+      if (job.status !== 'saved' && job.dateApplied) {
         const d = new Date(job.dateApplied);
         if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
           currentMonthApplied++;
@@ -132,42 +107,12 @@ export default function JobsPage() {
 
   const openAddModal = () => {
     setEditingJob(null);
-    setFormData({ company: "", position: "", location: "", status: "saved", link: "", description: "", dateApplied: undefined });
     setIsModalOpen(true);
   };
 
   const openEditModal = (job: Job) => {
     setEditingJob(job);
-    setFormData({ 
-      company: job.company, position: job.position, location: job.location || "", 
-      status: job.status, link: job.link || "", description: job.description || "",
-      dateApplied: job.dateApplied ? new Date(job.dateApplied) : undefined
-    });
     setIsModalOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!formData.company || !formData.position) {
-      toast({ title: "Error", description: "Company and Position are required", variant: "destructive" });
-      return;
-    }
-
-    try {
-      const { dateApplied, ...restFormData } = formData;
-      const jobToSave = {
-        id: editingJob ? editingJob.id : `temp-${Date.now()}`,
-        dateAdded: editingJob ? editingJob.dateAdded : new Date().toLocaleDateString(),
-        dateApplied: dateApplied ? dateApplied.toISOString() : undefined,
-        ...restFormData
-      };
-      
-      await supabaseApi.saveJob(jobToSave);
-      toast({ title: "Success", description: "Job saved successfully!" });
-      setIsModalOpen(false);
-      loadJobs();
-    } catch {
-      toast({ title: "Error", description: "Failed to save job", variant: "destructive" });
-    }
   };
 
   const executeDelete = async () => {
@@ -428,111 +373,12 @@ export default function JobsPage() {
         )}
       </div>
 
-      {/* CRUD Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-          <div className="bg-background rounded-lg shadow-xl w-[500px] overflow-hidden flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center bg-muted/30">
-              <h2 className="font-semibold text-lg">{editingJob ? "Edit Job" : "Add Job"}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">Company</label>
-                  <input 
-                    type="text" className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                    value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">Position</label>
-                  <input 
-                    type="text" className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                    value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">Location</label>
-                  <input 
-                    type="text" className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                    value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">Status</label>
-                  <select 
-                    className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                    value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}
-                  >
-                    <option value="saved">Saved</option>
-                    <option value="applied">Applied</option>
-                    <option value="interviewed">Interviewed</option>
-                    <option value="offered">Offered</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">Source Link</label>
-                  <input 
-                    type="url" className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                    placeholder="https://..."
-                    value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">Date Applied</label>
-                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                    <PopoverTrigger render={
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full h-9 justify-start text-left font-normal px-3",
-                          !formData.dateApplied && "text-muted-foreground"
-                        )}
-                      />
-                    }>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.dateApplied ? format(formData.dateApplied, "PPP") : <span>Pick a date</span>}
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={formData.dateApplied}
-                        onSelect={(date) => {
-                          setFormData({...formData, dateApplied: date});
-                          setIsCalendarOpen(false);
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase">Job Description</label>
-                <textarea 
-                  className="w-full h-32 rounded-md border bg-background p-3 text-sm resize-none"
-                  placeholder="Paste the job description here for the AI to tailor against..."
-                  value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
-                />
-              </div>
-            </div>
-
-            <div className="p-4 border-t bg-muted/30 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-              <Button onClick={handleSave}>Save Job</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddJobModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        job={editingJob}
+        onSaved={() => loadJobs()}
+      />
 
       {/* Delete Confirmation Overlay */}
       {jobToDelete && (

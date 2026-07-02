@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { X, Briefcase, PlusCircle, Loader2 } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { supabaseApi } from "@/lib/supabase-api";
 import { Resume } from "@/types/resume";
-import Link from "next/link";
 import { createPortal } from "react-dom";
+import { AddJobModal } from "./AddJobModal";
 
 interface Job {
   id: string;
@@ -31,38 +31,44 @@ export function TailorJobModal({ isOpen, onClose, onSelectJob, isDuplicating }: 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [tailoredResumesByJob, setTailoredResumesByJob] = useState<Record<string, string[]>>({});
+  const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
 
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
+  const fetchJobsAndResumes = () => {
+    setLoading(true);
+    Promise.all([
+      supabaseApi.getJobs(),
+      supabaseApi.getResumes()
+    ]).then(([jobsData, resumesData]) => {
+      setJobs(jobsData);
+      
+      const resumeMap: Record<string, string[]> = {};
+      resumesData.forEach((resume: Resume) => {
+        if (resume.tailoringJob?.id) {
+          if (!resumeMap[resume.tailoringJob.id]) {
+            resumeMap[resume.tailoringJob.id] = [];
+          }
+          resumeMap[resume.tailoringJob.id].push(resume.title);
+        }
+      });
+      setTailoredResumesByJob(resumeMap);
+    }).catch(err => {
+      console.error("Failed to load jobs or resumes:", err);
+    }).finally(() => {
+      setLoading(false);
+    });
+  };
+
   useEffect(() => {
     if (isOpen) {
-      setLoading(true);
-      Promise.all([
-        supabaseApi.getJobs(),
-        supabaseApi.getResumes()
-      ]).then(([jobsData, resumesData]) => {
-        setJobs(jobsData);
-        
-        // Map jobId to array of tailored resume titles
-        const resumeMap: Record<string, string[]> = {};
-        resumesData.forEach((resume: Resume) => {
-          if (resume.tailoringJob?.id) {
-            if (!resumeMap[resume.tailoringJob.id]) {
-              resumeMap[resume.tailoringJob.id] = [];
-            }
-            resumeMap[resume.tailoringJob.id].push(resume.title);
-          }
-        });
-        setTailoredResumesByJob(resumeMap);
-      }).catch(err => {
-        console.error("Failed to load jobs or resumes:", err);
-      }).finally(() => {
-        setLoading(false);
-      });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchJobsAndResumes();
     }
   }, [isOpen]);
 
@@ -73,14 +79,21 @@ export function TailorJobModal({ isOpen, onClose, onSelectJob, isDuplicating }: 
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2 text-slate-800">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
               <Briefcase className="w-4 h-4" />
             </div>
-            <h2 className="font-semibold text-lg">Select a Job to Tailor</h2>
+            <h2 className="font-semibold text-lg truncate">Select a Job to Tailor</h2>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} disabled={isDuplicating} className="text-slate-400 hover:text-slate-600">
-            <X className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {!loading && jobs.length > 0 && (
+              <Button variant="outline" size="sm" className="h-8 text-xs px-2" onClick={() => setIsAddJobModalOpen(true)}>
+                + Add Job
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={onClose} disabled={isDuplicating} className="text-slate-400 hover:text-slate-600">
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
         
         <div className="p-4 overflow-y-auto flex-1 bg-slate-50/50">
@@ -91,10 +104,10 @@ export function TailorJobModal({ isOpen, onClose, onSelectJob, isDuplicating }: 
             </div>
           ) : jobs.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-slate-500 mb-4">You haven't saved any jobs yet.</p>
-              <Link href="/jobs" className={buttonVariants({ variant: "outline" })}>
-                Go to Job Tracker to add one
-              </Link>
+              <p className="text-slate-500 mb-4">You haven&apos;t saved any jobs yet.</p>
+              <Button variant="outline" onClick={() => setIsAddJobModalOpen(true)}>
+                + Add First Job
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -133,6 +146,12 @@ export function TailorJobModal({ isOpen, onClose, onSelectJob, isDuplicating }: 
           )}
         </div>
       </div>
+      
+      <AddJobModal 
+        isOpen={isAddJobModalOpen}
+        onClose={() => setIsAddJobModalOpen(false)}
+        onSaved={fetchJobsAndResumes}
+      />
     </div>,
     document.body
   );
