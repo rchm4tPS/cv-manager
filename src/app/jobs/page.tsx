@@ -210,6 +210,8 @@ export default function JobsPage() {
         id: 'new',
         title: `${original.title || 'Untitled'} - Tailored for ${tailorModalJob.company}`,
         analysisResult: undefined, // Wipe out generic analysis!
+        acceptedSuggestions: undefined,
+        rejectedSuggestions: undefined,
         tailoringJob: {
           id: tailorModalJob.id,
           company: tailorModalJob.company,
