@@ -396,7 +396,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       isDirty: true,
     })),
 
-  acceptAiChanges: () => set((state) => {
+  acceptAiChanges: () => setWithHistory((state) => {
     // Record decisions for all AI messages since the last divider
     let updatedResume = { ...state.resume };
     const updatedChatMessages = [...state.chatMessages];

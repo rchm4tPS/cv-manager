@@ -3,8 +3,19 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useResumeStore } from "@/store/useResumeStore";
-import { Loader2, X, Send, Check, Trash2, RefreshCw, ChevronRight } from "lucide-react";
+import { Loader2, X, Send, Check, Trash2, RefreshCw, ChevronRight, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const SUGGESTIONS = [
+  "How can I make my summary more ATS-friendly?",
+  "Are there any formatting issues that might confuse an ATS?",
+  "Suggest better action verbs for my experience section.",
+  "What keywords are missing from my skills section?",
+  "Can you help me quantify my achievements?",
+  "How can I tailor this resume for a software engineering role?",
+  "Is my resume too long for an ATS?",
+  "Identify any buzzwords or clichés I should remove."
+];
 
 export function AiChatPane() {
   const { 
@@ -27,8 +38,23 @@ export function AiChatPane() {
 
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionLimit, setSuggestionLimit] = useState(3);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (formRef.current && !formRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSuggestions]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -70,7 +96,20 @@ export function AiChatPane() {
       if (data.success && data.data) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const aiMsg: any = { role: "ai", text: data.data.reply, thought: data.data.thought };
+        
+        let hasActualChanges = false;
         if (data.data.proposedChanges && Object.keys(data.data.proposedChanges).length > 0) {
+          const proposedKeys = Object.keys(data.data.proposedChanges);
+          for (const key of proposedKeys) {
+            // @ts-ignore
+            if (JSON.stringify(data.data.proposedChanges[key]) !== JSON.stringify(resume[key as keyof typeof resume])) {
+              hasActualChanges = true;
+              break;
+            }
+          }
+        }
+
+        if (hasActualChanges) {
           aiMsg.status = 'pending';
           setPendingChanges(data.data.proposedChanges);
           toast({
@@ -258,9 +297,57 @@ export function AiChatPane() {
 
       <div className="p-4 bg-white border-t">
         <form 
+          ref={formRef}
           onSubmit={(e) => { e.preventDefault(); handleSend(); }}
           className="relative flex items-end p-1.5 rounded-xl border border-slate-200 bg-slate-50 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all"
         >
+          {showSuggestions && (
+            <div className="absolute bottom-full left-0 mb-2 w-full bg-white border border-slate-200 rounded-xl shadow-lg p-2 z-10">
+              <div className="flex items-center justify-between mb-2 pb-1 border-b px-1">
+                <span className="text-xs font-semibold text-slate-500">Suggested Queries</span>
+                <Button variant="ghost" size="sm" className="h-4 w-4 p-0 text-slate-400" onClick={() => setShowSuggestions(false)}>
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+              <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto px-1">
+                {SUGGESTIONS.slice(0, suggestionLimit).map((suggestion, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="group flex items-start gap-2 text-left text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-600 p-2 rounded border border-slate-100 transition-colors"
+                    onClick={() => {
+                      setShowSuggestions(false);
+                      handleSend(suggestion);
+                    }}
+                  >
+                    <span className="flex-1">{suggestion}</span>
+                    <Send className="w-3 h-3 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                ))}
+                {suggestionLimit < SUGGESTIONS.length && (
+                  <button
+                    type="button"
+                    className="text-center text-xs text-blue-500 hover:text-blue-700 p-1.5 font-medium"
+                    onClick={() => setSuggestionLimit(prev => Math.min(prev + 5, SUGGESTIONS.length))}
+                  >
+                    More . . .
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          <Button 
+            type="button"
+            size="icon"
+            variant="ghost"
+            className={`shrink-0 w-8 h-8 mr-1 mb-[2px] ${showSuggestions ? 'text-blue-500' : 'text-slate-400 hover:text-blue-600'}`}
+            onClick={() => {
+              setShowSuggestions(!showSuggestions);
+              if (!showSuggestions) setSuggestionLimit(3);
+            }}
+          >
+            <Sparkles className="w-4 h-4" />
+          </Button>
           <textarea
             ref={textareaRef}
             rows={1}
