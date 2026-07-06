@@ -12,6 +12,8 @@ Your objective is to:
 2. Provide a brief, conversational response to the user acknowledging the change.
 3. Provide the specific, modified CV data that applies the requested changes.
 
+CRITICAL LANGUAGE RULE: Identify the original language of the CV (e.g., Indonesian, English). All your thoughts, replies, and modified CV content MUST be written in the exact same language as the CV. If the CV is in Indonesian, you MUST reply and write content in Indonesian.
+
 You must return a JSON object matching this schema exactly:
 {
   "thought": "Your step-by-step logical reasoning before making the fix.",

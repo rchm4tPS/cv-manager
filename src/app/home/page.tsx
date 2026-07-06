@@ -7,15 +7,20 @@ import { Resume } from "@/types/resume";
 import { Button } from "@/components/ui/button";
 import { FileText, Plus, Upload, Loader2, Clock, Trash2, Sparkles } from "lucide-react";
 import { useResumeStore } from "@/store/useResumeStore";
+import { CvUploadOverlay } from "@/components/CvUploadOverlay";
+import { DocumentSettings } from "@/types/resume";
+import { useToast } from "@/hooks/use-toast";
 
 export default function HomePage() {
   const router = useRouter();
+  const { toast } = useToast();
   const { setTailoringJob } = useResumeStore();
   const [recentResumes, setRecentResumes] = useState<Resume[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'master' | 'tailored'>('all');
+  const [isUploadOverlayOpen, setIsUploadOverlayOpen] = useState(false);
 
   useEffect(() => {
     async function loadHistory() {
@@ -56,6 +61,41 @@ export default function HomePage() {
     }
   };
 
+  const handleUploadSuccess = async (parsedData: any, filename: string) => {
+    try {
+      const defaultSettings: DocumentSettings = {
+        pageSize: 'Letter',
+        margin: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 },
+        typography: { fontFamily: "'Times New Roman', Times, serif", fontSize: 11, titleSize: 28, headingSize: 14, bodySize: 13, lineHeight: 1.5, textAlign: 'left' },
+        spacing: { nameGap: 12, headerGap: 16, sectionGap: 16, titleGap: 8, itemGap: 12, lineGap: 4, bulletGap: 4 },
+      };
+
+      const title = filename.replace(/\.pdf$/i, '');
+
+      const newResume: Resume = {
+        id: "new",
+        userId: "local-user",
+        title: title,
+        personalInfo: parsedData.personalInfo || { name: "", email: "", phone: "", location: "" },
+        sections: parsedData.sections || [],
+        settings: defaultSettings,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const savedResume = await supabaseApi.saveResume(newResume);
+      setIsUploadOverlayOpen(false);
+      router.push(`/editor/${savedResume.id}`);
+    } catch (error) {
+      console.error("Failed to save imported resume:", error);
+      toast({
+        title: "Import Failed",
+        description: "Failed to save imported resume. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="flex-1 bg-muted/10 flex flex-col p-8 md:p-12 overflow-auto">
       <div className="max-w-4xl w-full mx-auto space-y-10">
@@ -80,13 +120,14 @@ export default function HomePage() {
           </button>
 
           <button 
+            onClick={() => setIsUploadOverlayOpen(true)}
             className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-200 hover:border-slate-300 hover:shadow-md rounded-xl transition-all group text-center"
           >
             <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Upload className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-semibold text-slate-900 mb-1">Upload Existing CV</h3>
-            <p className="text-sm text-slate-500">Extract data from a PDF (Coming Soon)</p>
+            <p className="text-sm text-slate-500">Extract data from a PDF using AI</p>
           </button>
         </div>
 
@@ -208,6 +249,12 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      
+      <CvUploadOverlay 
+        open={isUploadOverlayOpen} 
+        onOpenChange={setIsUploadOverlayOpen} 
+        onSuccess={handleUploadSuccess} 
+      />
     </div>
   );
 }
