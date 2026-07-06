@@ -90,7 +90,7 @@ export const supabaseApi = {
 
   // --- Jobs ---
 
-  async saveJob(job: { id: string; company: string; position: string; location?: string; status: string; link?: string; dateAdded: string; dateApplied?: string; description?: string }) {
+  async saveJob(job: { id: string; company: string; position: string; location?: string; status: string; link?: string; dateAdded: string; dateApplied?: string; description?: string; source?: string; appliedVia?: string; salaryRange?: string; workSetup?: string }) {
     const { data, error } = await supabase
       .from('jobs')
       .upsert({
@@ -104,6 +104,10 @@ export const supabaseApi = {
         date_added: job.dateAdded,
         date_applied: job.dateApplied,
         description: job.description,
+        source: job.source,
+        applied_via: job.appliedVia,
+        salary_range: job.salaryRange,
+        work_setup: job.workSetup
       })
       .select()
       .single();
@@ -135,7 +139,11 @@ export const supabaseApi = {
       link: row.link,
       dateAdded: row.date_added,
       dateApplied: row.date_applied,
-      description: row.description
+      description: row.description,
+      source: row.source,
+      appliedVia: row.applied_via,
+      salaryRange: row.salary_range,
+      workSetup: row.work_setup
     }));
   },
 

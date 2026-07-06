@@ -2,15 +2,149 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, ExternalLink, Calendar as CalendarIcon, ChevronUp, TrendingUp, TrendingDown, Briefcase, BarChart3 } from "lucide-react";
+import { Pencil, Trash2, ExternalLink, Calendar as CalendarIcon, ChevronUp, ChevronDown, TrendingUp, TrendingDown, Briefcase, BarChart3, Search, X, Filter } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useResumeStore } from "@/store/useResumeStore";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Resume } from "@/types/resume";
-import { AddJobModal, Job } from "@/components/AddJobModal";
+import { AddJobModal, Job, JOB_SOURCES, JOB_APPLIED_VIA, JOB_WORK_SETUPS } from "@/components/AddJobModal";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+
+const InlineDatePicker = ({ date, onSelect, className, placeholder = "-" }: { date?: string, onSelect: (dateStr: string) => void, className?: string, placeholder?: string }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={
+        <button className={cn("bg-transparent border border-transparent hover:border-input focus:border-input rounded px-2 py-1 h-8 text-sm text-left flex items-center gap-2 whitespace-nowrap", className)} />
+      }>
+        <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+        <span className="flex-1 truncate">{date ? format(new Date(date), "MMM d, yyyy") : placeholder}</span>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 z-[50] max-h-[70vh] overflow-y-auto" align="start">
+        <Calendar
+          mode="single"
+          selected={date ? new Date(date) : undefined}
+          disabled={(d) => d > new Date()}
+          onSelect={(newDate) => {
+            onSelect(newDate ? newDate.toISOString() : "");
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'saved': return 'bg-slate-100 text-slate-700 border-slate-200';
+    case 'applied': return 'bg-blue-100 text-blue-700 border-blue-200';
+    case 'interviewed': return 'bg-amber-100 text-amber-700 border-amber-200';
+    case 'offered': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    case 'rejected': return 'bg-rose-100 text-rose-700 border-rose-200';
+    default: return 'bg-primary/10 text-primary border-primary/20';
+  }
+};
+
+const formatSalaryString = (text: string) => {
+  if (!text) return "";
+  // Remove existing commas to prevent double formatting
+  const cleanText = text.replace(/,/g, '');
+  // Format any sequence of digits with commas
+  return cleanText.replace(/\d+/g, (match) => {
+    return Number(match).toLocaleString('en-US');
+  });
+};
+
+const InlineStatusPicker = ({ status, onSelect }: { status: string, onSelect: (s: string) => void }) => {
+  const [open, setOpen] = useState(false);
+  
+  const options = [
+    { value: 'saved', label: 'Saved' },
+    { value: 'applied', label: 'Applied' },
+    { value: 'interviewed', label: 'Interviewed' },
+    { value: 'offered', label: 'Offered' },
+    { value: 'rejected', label: 'Rejected' }
+  ];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={
+        <button className={`flex items-center justify-between gap-2 px-2.5 py-1 rounded-full border outline-none hover:opacity-80 transition-opacity ${getStatusColor(status)}`} />
+      }>
+        <span className="text-[10px] uppercase font-bold tracking-wider">{status}</span>
+        <ChevronDown className="w-3 h-3 opacity-70" />
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-1.5 z-[50]" align="start">
+        <div className="flex flex-col gap-1">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              className="flex justify-start items-center px-1.5 py-1.5 rounded-sm hover:bg-muted"
+              onClick={() => {
+                onSelect(opt.value);
+                setOpen(false);
+              }}
+            >
+              <span className={`px-2.5 py-1 text-[10px] rounded-full uppercase font-bold tracking-wider border ${getStatusColor(opt.value)}`}>
+                {opt.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+const EditableText = ({ 
+  value, 
+  onSave, 
+  className,
+  multiline = false
+}: { 
+  value: string; 
+  onSave: (val: string) => void; 
+  className?: string;
+  multiline?: boolean;
+}) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  
+  React.useEffect(() => {
+    if (ref.current && document.activeElement !== ref.current) {
+      if (ref.current.textContent !== value) {
+        ref.current.textContent = value;
+      }
+    }
+  }, [value]);
+
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      className={cn(
+        "bg-transparent border border-transparent hover:border-input focus:border-input rounded px-2 py-1 text-sm outline-none transition-colors",
+        multiline ? "whitespace-normal break-words" : "whitespace-nowrap",
+        className
+      )}
+      onBlur={(e) => {
+        const newVal = e.currentTarget.textContent || "";
+        if (newVal !== value) onSave(newVal);
+      }}
+      onKeyDown={(e) => {
+        if (!multiline && e.key === 'Enter') {
+          e.preventDefault();
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+};
 
 export default function JobsPage() {
   const router = useRouter();
@@ -33,6 +167,19 @@ export default function JobsPage() {
 
   // Dashboard State
   const [isDashboardOpen, setIsDashboardOpen] = useState(true);
+
+  // Bulk Selection State
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
+  // Filter States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterSource, setFilterSource] = useState("");
+  const [filterAppliedVia, setFilterAppliedVia] = useState("");
+  const [filterWorkSetup, setFilterWorkSetup] = useState("");
 
   const loadJobs = async (isInitial = false) => {
     if (!isInitial) setLoading(true);
@@ -105,6 +252,39 @@ export default function JobsPage() {
     };
   }, [jobs]);
 
+  const filteredJobs = React.useMemo(() => {
+    return jobs.filter((job) => {
+      // Search Box Match
+      const sq = searchQuery.toLowerCase();
+      const matchesSearch = !sq || 
+        (job.position && job.position.toLowerCase().includes(sq)) ||
+        (job.company && job.company.toLowerCase().includes(sq)) ||
+        (job.location && job.location.toLowerCase().includes(sq)) ||
+        (job.salaryRange && job.salaryRange.toLowerCase().includes(sq));
+
+      if (!matchesSearch) return false;
+
+      // Dropdown Filters
+      if (filterSource && job.source !== filterSource) return false;
+      if (filterAppliedVia && job.appliedVia !== filterAppliedVia) return false;
+      if (filterWorkSetup && job.workSetup !== filterWorkSetup) return false;
+
+      // Date Applied Filter (Full Date)
+      if (filterDateFrom || filterDateTo) {
+        if (!job.dateApplied) return false;
+        
+        const jobDateStr = typeof job.dateApplied === 'string' 
+          ? job.dateApplied.substring(0, 10) 
+          : new Date(job.dateApplied).toISOString().substring(0, 10);
+        
+        if (filterDateFrom && jobDateStr < filterDateFrom) return false;
+        if (filterDateTo && jobDateStr > filterDateTo) return false;
+      }
+
+      return true;
+    });
+  }, [jobs, searchQuery, filterDateFrom, filterDateTo, filterSource, filterAppliedVia, filterWorkSetup]);
+
   const openAddModal = () => {
     setEditingJob(null);
     setIsModalOpen(true);
@@ -125,6 +305,38 @@ export default function JobsPage() {
       toast({ title: "Error", description: "Failed to delete job", variant: "destructive" });
     } finally {
       setJobToDelete(null);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) setSelectedJobIds(new Set(filteredJobs.map(j => j.id)));
+    else setSelectedJobIds(new Set());
+  };
+
+  const handleSelectRow = (jobId: string, checked: boolean) => {
+    const newSet = new Set(selectedJobIds);
+    if (checked) newSet.add(jobId);
+    else newSet.delete(jobId);
+    setSelectedJobIds(newSet);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedJobIds.size === 0) return;
+    setIsBulkDeleteModalOpen(true);
+  };
+
+  const executeBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      await Promise.all(Array.from(selectedJobIds).map(id => supabaseApi.deleteJob(id)));
+      toast({ title: "Deleted", description: `${selectedJobIds.size} jobs deleted successfully.` });
+      setSelectedJobIds(new Set());
+      setIsBulkDeleteModalOpen(false);
+      loadJobs();
+    } catch {
+      toast({ title: "Error", description: "Failed to delete some jobs.", variant: "destructive" });
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -179,6 +391,23 @@ export default function JobsPage() {
     }
   };
 
+  const handleInlineEdit = async (jobId: string, field: keyof Job, value: string) => {
+    const jobToUpdate = jobs.find(j => j.id === jobId);
+    if (!jobToUpdate) return;
+    
+    // Optimistic update
+    setJobs(jobs.map(j => j.id === jobId ? { ...j, [field]: value } : j));
+    
+    try {
+      const updatedJob = { ...jobToUpdate, [field]: value };
+      await supabaseApi.saveJob(updatedJob);
+      toast({ title: "Updated", description: "Job detail saved." });
+    } catch {
+      toast({ title: "Error", description: "Failed to save inline edit", variant: "destructive" });
+      loadJobs(); // revert on fail
+    }
+  };
+
   const toggleExpand = (jobId: string) => {
     const newExpanded = new Set(expandedJobs);
     if (newExpanded.has(jobId)) {
@@ -187,17 +416,6 @@ export default function JobsPage() {
       newExpanded.add(jobId);
     }
     setExpandedJobs(newExpanded);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'saved': return 'bg-slate-100 text-slate-700 border-slate-200';
-      case 'applied': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'interviewed': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'offered': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'rejected': return 'bg-rose-100 text-rose-700 border-rose-200';
-      default: return 'bg-primary/10 text-primary border-primary/20';
-    }
   };
 
   if (!isMounted) return null;
@@ -210,7 +428,18 @@ export default function JobsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Job Applications</h1>
             <p className="text-muted-foreground mt-1">Manage your applications and tailor your CV for each role.</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            {selectedJobIds.size > 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                className="gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Selected ({selectedJobIds.size})
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setIsDashboardOpen(!isDashboardOpen)}>
               {isDashboardOpen ? <><ChevronUp className="w-4 h-4 mr-2" /> Hide Dashboard</> : <><BarChart3 className="w-4 h-4 mr-2" /> Show Dashboard</>}
             </Button>
@@ -296,44 +525,246 @@ export default function JobsPage() {
           </div>
         )}
 
+        {/* Filter Bar */}
+        <div className="bg-white border rounded-xl p-4 shadow-sm flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input 
+              type="text" 
+              placeholder="Search by position, company, location or salary..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            {(searchQuery || filterDateFrom || filterDateTo || filterSource || filterAppliedVia || filterWorkSetup) && (
+              <Button 
+                variant="ghost" 
+                title="Clear Filters"
+                className="hover:bg-red-50 hover:text-red-600 text-muted-foreground hidden sm:flex"
+                onClick={() => {
+                  setSearchQuery("");
+                  setFilterDateFrom("");
+                  setFilterDateTo("");
+                  setFilterSource("");
+                  setFilterAppliedVia("");
+                  setFilterWorkSetup("");
+                }}
+              >
+                <X className="w-4 h-4 mr-1" /> Clear
+              </Button>
+            )}
+            
+            <Popover>
+              <PopoverTrigger render={<Button variant="outline" className="gap-2 relative" />}>
+                <Filter className="w-4 h-4" /> 
+                Filters
+                {(filterDateFrom || filterDateTo || filterSource || filterAppliedVia || filterWorkSetup) && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white" />
+                )}
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-4 space-y-4 max-h-[85vh] overflow-y-auto">
+                <div className="space-y-1.5 border-b pb-3">
+                  <h4 className="font-semibold text-sm">Filter Jobs</h4>
+                  <p className="text-xs text-muted-foreground">Narrow down your applications</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Date Applied</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">From</span>
+                      <div>
+                        <InlineDatePicker 
+                          date={filterDateFrom} 
+                          onSelect={setFilterDateFrom} 
+                          className="w-full border-input border h-9 font-normal hover:bg-muted/50" 
+                          placeholder="Pick date"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">To</span>
+                      <div>
+                        <InlineDatePicker 
+                          date={filterDateTo} 
+                          onSelect={setFilterDateTo} 
+                          className="w-full border-input border h-9 font-normal hover:bg-muted/50" 
+                          placeholder="Pick date"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Job Source</label>
+                  <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="w-full text-sm border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 bg-background">
+                    <option value="">Any Source</option>
+                    {JOB_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Applied Via</label>
+                  <select value={filterAppliedVia} onChange={e => setFilterAppliedVia(e.target.value)} className="w-full text-sm border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 bg-background">
+                    <option value="">Any Application Method</option>
+                    {JOB_APPLIED_VIA.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Work Setup</label>
+                  <select value={filterWorkSetup} onChange={e => setFilterWorkSetup(e.target.value)} className="w-full text-sm border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 bg-background">
+                    <option value="">Any Setup</option>
+                    {JOB_WORK_SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+
         {loading ? (
           <div className="py-20 text-center text-muted-foreground">Loading jobs...</div>
         ) : (
-          <div className="border rounded-md bg-background shadow-sm overflow-hidden">
+          <div className="border rounded-md bg-background shadow-sm overflow-x-auto w-full">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs uppercase bg-muted/50 text-muted-foreground border-b">
+              <thead className="text-xs uppercase bg-muted/50 text-muted-foreground border-b whitespace-nowrap">
                 <tr>
+                  <th className="px-6 py-4 font-medium w-12">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                      checked={filteredJobs.length > 0 && selectedJobIds.size === filteredJobs.length}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                    />
+                  </th>
                   <th className="px-6 py-4 font-medium">Position</th>
                   <th className="px-6 py-4 font-medium">Company</th>
                   <th className="px-6 py-4 font-medium">Location</th>
                   <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium">Date Applied</th>
+                  <th className="px-4 py-4 font-medium min-w-32">Source</th>
+                  <th className="px-4 py-4 font-medium min-w-32">Applied Via</th>
+                  <th className="px-4 py-4 font-medium min-w-32">Salary Range</th>
+                  <th className="px-4 py-4 font-medium min-w-28">Work Setup</th>
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {jobs.length === 0 ? (
+                {filteredJobs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                    <td colSpan={11} className="px-6 py-8 text-center text-muted-foreground">
                       No job applications found. Click &quot;+ Add Job&quot; to get started!
                     </td>
                   </tr>
                 ) : (
-                  jobs.map((job) => (
+                  filteredJobs.map((job) => {
+                    const isGhosted = job.status.toLowerCase() === 'applied' && job.dateApplied && (new Date().getTime() - new Date(job.dateApplied).getTime()) / (1000 * 3600 * 24) >= 14;
+                    return (
                     <React.Fragment key={job.id}>
-                      <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="px-6 py-4 font-medium text-primary">{job.position}</td>
-                        <td className="px-6 py-4">{job.company}</td>
-                        <td className="px-6 py-4">{job.location || "-"}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 text-[10px] rounded-full uppercase font-bold tracking-wider border ${getStatusColor(job.status)}`}>
-                            {job.status}
-                          </span>
+                      <tr className={cn("border-b last:border-0 hover:bg-muted/30 transition-colors align-middle", isGhosted && "bg-red-50/70 hover:bg-red-100/70")}>
+                        <td className="px-6 py-2">
+                          <input 
+                            type="checkbox"
+                            className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                            checked={selectedJobIds.has(job.id)}
+                            onChange={(e) => handleSelectRow(job.id, e.target.checked)}
+                          />
                         </td>
-                        <td className="px-6 py-4 text-muted-foreground">
-                          {job.dateApplied ? format(new Date(job.dateApplied), "MMM d, yyyy") : "-"}
+                        <td className="px-4 py-2 font-medium text-primary">
+                          <EditableText
+                            value={job.position}
+                            onSave={(val) => handleInlineEdit(job.id, 'position', val)}
+                            multiline
+                            className="w-max max-w-[300px] text-primary font-medium"
+                          />
                         </td>
-                        <td className="px-6 py-4 text-right flex justify-end gap-2 items-center">
+                        <td className="px-4 py-2">
+                          <EditableText
+                            value={job.company}
+                            onSave={(val) => handleInlineEdit(job.id, 'company', val)}
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <EditableText
+                            value={job.location || ""}
+                            onSave={(val) => handleInlineEdit(job.id, 'location', val)}
+                            className="empty:before:content-['-'] empty:before:text-muted-foreground"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <InlineStatusPicker 
+                            status={job.status} 
+                            onSelect={(val) => handleInlineEdit(job.id, 'status', val)} 
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
+                          <InlineDatePicker 
+                            date={job.dateApplied} 
+                            onSelect={(newDate) => handleInlineEdit(job.id, 'dateApplied', newDate)} 
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <select 
+                            className="bg-transparent border border-transparent hover:border-input focus:border-input rounded px-2 py-1 h-8 text-sm cursor-pointer"
+                            value={job.source || ""}
+                            onChange={(e) => handleInlineEdit(job.id, 'source', e.target.value)}
+                          >
+                            <option value="">-</option>
+                            <option value="relasi/teman">Relasi / Teman</option>
+                            <option value="keluarga">Keluarga</option>
+                            <option value="dosen">Dosen</option>
+                            <option value="linked in">LinkedIn</option>
+                            <option value="grup WA">Grup WA</option>
+                            <option value="website perusahaan">Web Perusahaan</option>
+                            <option value="glints">Glints</option>
+                            <option value="jobstreet">Jobstreet</option>
+                            <option value="indeed">Indeed</option>
+                            <option value="mendapat sendiri di dunia nyata">Dunia Nyata</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-2">
+                          <select 
+                            className="bg-transparent border border-transparent hover:border-input focus:border-input rounded px-2 py-1 h-8 text-sm cursor-pointer"
+                            value={job.appliedVia || ""}
+                            onChange={(e) => handleInlineEdit(job.id, 'appliedVia', e.target.value)}
+                          >
+                            <option value="">-</option>
+                            <option value="email">Email</option>
+                            <option value="website perusahaan">Web Perusahaan</option>
+                            <option value="google form">Google Form</option>
+                            <option value="glints">Glints</option>
+                            <option value="jobstreet">Jobstreet</option>
+                            <option value="linked in easy apply">LI Easy Apply</option>
+                            <option value="indeed">Indeed</option>
+                            <option value="ordal">Ordal</option>
+                            <option value="dikirim ke tempat">Dikirim Tempat</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-2">
+                          <EditableText
+                            value={formatSalaryString(job.salaryRange || "")}
+                            onSave={(val) => handleInlineEdit(job.id, 'salaryRange', formatSalaryString(val))}
+                            className="empty:before:content-['-'] empty:before:text-muted-foreground"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <select 
+                            className="bg-transparent border border-transparent hover:border-input focus:border-input rounded px-2 py-1 h-8 text-sm cursor-pointer"
+                            value={job.workSetup || ""}
+                            onChange={(e) => handleInlineEdit(job.id, 'workSetup', e.target.value)}
+                          >
+                            <option value="">-</option>
+                            <option value="WFO">WFO</option>
+                            <option value="WFH">WFH</option>
+                            <option value="Hybrid">Hybrid</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 text-right flex justify-end gap-2 items-center transition-colors">
                           {job.link && (
                             <a href={job.link} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "link", size: "sm" }), "h-8 px-2 text-blue-600")}>
                               <ExternalLink className="w-3 h-3 mr-1" />
@@ -356,7 +787,7 @@ export default function JobsPage() {
                       </tr>
                       {expandedJobs.has(job.id) && (
                         <tr className="border-b bg-muted/20">
-                          <td colSpan={6} className="px-6 py-6">
+                          <td colSpan={11} className="px-6 py-6">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Job Description</h4>
                             <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/80 max-w-4xl">
                               {job.description || <span className="italic text-muted-foreground">No description provided.</span>}
@@ -365,7 +796,7 @@ export default function JobsPage() {
                         </tr>
                       )}
                     </React.Fragment>
-                  ))
+                  )})
                 )}
               </tbody>
             </table>
@@ -389,6 +820,22 @@ export default function JobsPage() {
             <div className="flex justify-center gap-3 mt-4">
               <Button variant="outline" onClick={() => setJobToDelete(null)}>Cancel</Button>
               <Button variant="destructive" onClick={executeDelete}>Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Overlay */}
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center animate-in fade-in">
+          <div className="bg-background rounded-lg shadow-xl w-96 overflow-hidden flex flex-col p-6 text-center gap-4 animate-in zoom-in-95">
+            <h2 className="font-semibold text-lg text-foreground">Delete {selectedJobIds.size} Jobs?</h2>
+            <p className="text-sm text-muted-foreground">This action cannot be undone. Are you sure you want to permanently delete these applications?</p>
+            <div className="flex justify-center gap-3 mt-4">
+              <Button variant="outline" onClick={() => setIsBulkDeleteModalOpen(false)} disabled={isBulkDeleting}>Cancel</Button>
+              <Button variant="destructive" onClick={executeBulkDelete} disabled={isBulkDeleting}>
+                {isBulkDeleting ? "Deleting..." : "Delete"}
+              </Button>
             </div>
           </div>
         </div>

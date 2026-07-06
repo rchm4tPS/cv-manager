@@ -101,7 +101,6 @@ export function AiChatPane() {
         if (data.data.proposedChanges && Object.keys(data.data.proposedChanges).length > 0) {
           const proposedKeys = Object.keys(data.data.proposedChanges);
           for (const key of proposedKeys) {
-            // @ts-ignore
             if (JSON.stringify(data.data.proposedChanges[key]) !== JSON.stringify(resume[key as keyof typeof resume])) {
               hasActualChanges = true;
               break;
