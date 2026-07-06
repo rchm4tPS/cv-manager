@@ -11,6 +11,14 @@ import { useToast } from "@/hooks/use-toast";
 import { supabaseApi } from "@/lib/supabase-api";
 import { createPortal } from "react-dom";
 
+export type JobSource = 'relasi/teman' | 'keluarga' | 'dosen' | 'linked in' | 'grup WA' | 'website perusahaan' | 'glints' | 'jobstreet' | 'indeed' | 'mendapat sendiri di dunia nyata';
+export type JobAppliedVia = 'email' | 'website perusahaan' | 'google form' | 'glints' | 'jobstreet' | 'linked in easy apply' | 'indeed' | 'ordal' | 'dikirim ke tempat';
+export type JobWorkSetup = 'WFO' | 'WFH' | 'Hybrid';
+
+export const JOB_SOURCES: JobSource[] = ['relasi/teman', 'keluarga', 'dosen', 'linked in', 'grup WA', 'website perusahaan', 'glints', 'jobstreet', 'indeed', 'mendapat sendiri di dunia nyata'];
+export const JOB_APPLIED_VIA: JobAppliedVia[] = ['email', 'website perusahaan', 'google form', 'glints', 'jobstreet', 'linked in easy apply', 'indeed', 'ordal', 'dikirim ke tempat'];
+export const JOB_WORK_SETUPS: JobWorkSetup[] = ['WFO', 'WFH', 'Hybrid'];
+
 export interface Job {
   id: string;
   company: string;
@@ -21,6 +29,10 @@ export interface Job {
   dateAdded: string;
   dateApplied?: string;
   description: string;
+  source?: JobSource;
+  appliedVia?: JobAppliedVia;
+  salaryRange?: string;
+  workSetup?: JobWorkSetup;
 }
 
 interface AddJobModalProps {
@@ -43,7 +55,11 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
     status: "saved",
     link: "",
     dateApplied: null as Date | null,
-    description: ""
+    description: "",
+    source: "" as JobSource | "",
+    appliedVia: "" as JobAppliedVia | "",
+    salaryRange: "",
+    workSetup: "" as JobWorkSetup | ""
   });
 
   useEffect(() => {
@@ -62,7 +78,11 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
           status: job.status,
           link: job.link || "",
           dateApplied: job.dateApplied ? new Date(job.dateApplied) : null,
-          description: job.description || ""
+          description: job.description || "",
+          source: job.source || "",
+          appliedVia: job.appliedVia || "",
+          salaryRange: job.salaryRange || "",
+          workSetup: job.workSetup || ""
         });
       } else {
         setFormData({
@@ -72,7 +92,11 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
           status: "saved",
           link: "",
           dateApplied: null,
-          description: ""
+          description: "",
+          source: "",
+          appliedVia: "",
+          salaryRange: "",
+          workSetup: ""
         });
       }
     }
@@ -209,6 +233,50 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
                   </PopoverContent>
                 </Popover>
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Source</label>
+              <select 
+                className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                value={formData.source} onChange={e => setFormData({...formData, source: e.target.value as JobSource})}
+              >
+                <option value="">Select source...</option>
+                {JOB_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Applied Via</label>
+              <select 
+                className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                value={formData.appliedVia} onChange={e => setFormData({...formData, appliedVia: e.target.value as JobAppliedVia})}
+              >
+                <option value="">Select application method...</option>
+                {JOB_APPLIED_VIA.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Salary Range</label>
+              <input 
+                type="text" className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                placeholder="e.g. 5,000,000 - 7,000,000"
+                value={formData.salaryRange} onChange={e => setFormData({...formData, salaryRange: e.target.value})}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Work Setup</label>
+              <select 
+                className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                value={formData.workSetup} onChange={e => setFormData({...formData, workSetup: e.target.value as JobWorkSetup})}
+              >
+                <option value="">Select work setup...</option>
+                {JOB_WORK_SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
           </div>
 
