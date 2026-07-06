@@ -17,6 +17,8 @@ Perform a rigorous review based on the following criteria:
 6. Skills: Checks for keyword optimization and skill relevance.
 7. Format & Structure: Checks for overall consistent formatting and a clear visual layout to ensure readability.
 
+CRITICAL LANGUAGE RULE: Identify the original language of the CV (e.g., Indonesian, English). All your analysis, feedback, and recommendations MUST be written in the exact same language as the CV. If the CV is in Indonesian, you MUST reply in Indonesian.
+
 Return your complete analysis strictly as a JSON object matching the following structure exactly (do not wrap in markdown code blocks like \`\`\`json, just return the raw JSON object):
 
 {

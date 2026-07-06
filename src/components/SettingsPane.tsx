@@ -244,11 +244,13 @@ export function SettingsPane() {
                 <label className="text-xs font-semibold text-muted-foreground">Top (in)</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.125"
+                  min="0.125"
+                  max="1"
                   className={inputClass}
                   value={settings.margin.top}
                   onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0;
+                    const val = Math.max(0.125, Math.min(1, parseFloat(e.target.value) || 1));
                     const updates: any = { top: val };
                     if (settings.linkOppositeMargins) updates.bottom = val;
                     updateSettings({ margin: { ...settings.margin, ...updates } });
@@ -259,11 +261,13 @@ export function SettingsPane() {
                 <label className="text-xs font-semibold text-muted-foreground">Bottom (in)</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.125"
+                  min="0.125"
+                  max="1"
                   className={inputClass}
                   value={settings.margin.bottom}
                   onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0;
+                    const val = Math.max(0.125, Math.min(1, parseFloat(e.target.value) || 1));
                     const updates: any = { bottom: val };
                     if (settings.linkOppositeMargins) updates.top = val;
                     updateSettings({ margin: { ...settings.margin, ...updates } });
@@ -274,11 +278,13 @@ export function SettingsPane() {
                 <label className="text-xs font-semibold text-muted-foreground">Left (in)</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.125"
+                  min="0.125"
+                  max="1"
                   className={inputClass}
                   value={settings.margin.left}
                   onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0;
+                    const val = Math.max(0.125, Math.min(1, parseFloat(e.target.value) || 1));
                     const updates: any = { left: val };
                     if (settings.linkOppositeMargins) updates.right = val;
                     updateSettings({ margin: { ...settings.margin, ...updates } });
@@ -289,11 +295,13 @@ export function SettingsPane() {
                 <label className="text-xs font-semibold text-muted-foreground">Right (in)</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.125"
+                  min="0.125"
+                  max="1"
                   className={inputClass}
                   value={settings.margin.right}
                   onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0;
+                    const val = Math.max(0.125, Math.min(1, parseFloat(e.target.value) || 1));
                     const updates: any = { right: val };
                     if (settings.linkOppositeMargins) updates.left = val;
                     updateSettings({ margin: { ...settings.margin, ...updates } });

@@ -416,48 +416,54 @@ export function AnalysisPane() {
       </div>
 
       {/* Top Banner */}
-      <div className="bg-white rounded-3xl p-4 md:p-6 border shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-4">
-          <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 shrink-0">
-            <Lightbulb className="w-6 h-6" />
+      <div className="bg-white rounded-3xl p-4 md:p-6 border shadow-sm grid grid-cols-[auto_1fr] md:grid-cols-[auto_1fr_auto] gap-x-4 md:gap-x-6 gap-y-1 md:gap-y-0 items-center">
+        
+        {/* Left: Lightbulb (Spans both rows on desktop) */}
+        <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 shrink-0 md:row-span-2 place-self-center">
+          <Lightbulb className="w-6 h-6" />
+        </div>
+
+        {/* Top Right: Job Title (Spans across Text and Circle columns on desktop) */}
+        {resume.personalInfo.jobTitle ? (
+          <div className="col-start-2 md:col-span-2 flex items-center justify-start ml-[-8px] mb-3 self-end pt-1 md:pt-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-1 rounded-lg max-w-full break-words whitespace-normal text-left inline-block">
+              {resume.personalInfo.jobTitle}
+            </span>
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
-              {resume.personalInfo.jobTitle && (
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 ml-[-8px] px-2 py-0.5 rounded-full shrink-0">
-                  {resume.personalInfo.jobTitle}
-                </span>
-              )}
-            </div>
-            {/* <h2 className="text-xl font-bold text-slate-800 break-words leading-tight mb-1">{resume.personalInfo.name} analysis</h2> */}
-            <h2 className="text-xl font-bold text-slate-800 break-words leading-tight mb-1">Your CV analysis</h2>
-            <p className="text-sm text-slate-500">
-              {100 - analysisResult.score} points needed to reach a 100 score.
-            </p>
-          </div>
+        ) : (
+          <div className="hidden md:block col-start-2 md:col-span-2"></div>
+        )}
+
+        {/* Bottom Middle: Text */}
+        <div className="col-start-1 col-span-2 md:col-start-2 md:col-span-1 min-w-0 self-start mt-3 md:mt-0 text-center md:text-left">
+          <h2 className="text-xl font-bold text-slate-800 break-words leading-tight mb-1">Your CV analysis</h2>
+          <p className="text-sm text-slate-500">
+            {100 - analysisResult.score} points needed to reach a 100 score.
+          </p>
         </div>
         
-        <div className="flex flex-col items-center gap-3 shrink-0">
+        {/* Bottom Right: Circle */}
+        <div className="col-start-1 col-span-2 md:col-start-3 md:col-span-1 flex flex-col items-center justify-center shrink-0 self-start mt-4 md:mt-0">
           <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
-          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-            <circle className="text-slate-100 stroke-current" strokeWidth="12" cx="50" cy="50" r="40" fill="transparent" />
-            <circle
-              className="text-blue-600 stroke-current"
-              strokeWidth="12"
-              strokeLinecap="round"
-              cx="50"
-              cy="50"
-              r="40"
-              fill="transparent"
-              strokeDasharray={2 * Math.PI * 40}
-              strokeDashoffset={(2 * Math.PI * 40) - (displayScore / 100) * (2 * Math.PI * 40)}
-            />
-          </svg>
-          <div className="absolute flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-blue-600 leading-none">{displayScore}</span>
-            <span className="text-[10px] font-bold text-blue-400">/100</span>
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle className="text-slate-100 stroke-current" strokeWidth="12" cx="50" cy="50" r="40" fill="transparent" />
+              <circle
+                className="text-blue-600 stroke-current"
+                strokeWidth="12"
+                strokeLinecap="round"
+                cx="50"
+                cy="50"
+                r="40"
+                fill="transparent"
+                strokeDasharray={2 * Math.PI * 40}
+                strokeDashoffset={(2 * Math.PI * 40) - (displayScore / 100) * (2 * Math.PI * 40)}
+              />
+            </svg>
+            <div className="absolute flex flex-col items-center justify-center">
+              <span className="text-2xl font-bold text-blue-600 leading-none">{displayScore}</span>
+              <span className="text-[10px] font-bold text-blue-400">/100</span>
+            </div>
           </div>
-        </div>
         </div>
       </div>
 

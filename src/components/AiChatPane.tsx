@@ -155,12 +155,19 @@ export function AiChatPane() {
     executeAiRequest(newMessages);
   };
 
+  const lastProcessedMsgRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (pendingAiMessage) {
+      if (pendingAiMessage === lastProcessedMsgRef.current) return;
+      lastProcessedMsgRef.current = pendingAiMessage;
+
       const msg = pendingAiMessage;
       setPendingAiMessage(null);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       handleSend(msg);
+    } else {
+      lastProcessedMsgRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAiMessage]);
