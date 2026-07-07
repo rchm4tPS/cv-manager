@@ -432,7 +432,7 @@ export default function JobsPage() {
   if (!isMounted) return null;
 
   return (
-    <div className="flex-1 p-8 bg-muted/10 overflow-y-auto">
+    <div className="flex-1 p-8 md:p-12 bg-muted/10 overflow-y-auto">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <div>
