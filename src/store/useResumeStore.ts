@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Resume, DocumentSettings, Section, AnalysisResult, AnalysisMode, ChatMessage, EditorSuggestion } from '@/types/resume';
+import { supabaseApi } from '@/lib/supabase-api';
 
 interface ResumeStore {
   resume: Resume;
@@ -54,6 +55,12 @@ interface ResumeStore {
   futureStates: Resume[];
   undo: () => void;
   redo: () => void;
+  // Dashboard List State
+  resumeList: Resume[];
+  isListLoading: boolean;
+  hasLoadedList: boolean;
+  fetchResumeList: (force?: boolean) => Promise<void>;
+  deleteResumeFromList: (id: string) => Promise<boolean>;
 }
 
 const blankResume: Resume = {
@@ -529,6 +536,45 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       futureStates: state.futureStates.slice(1),
       isDirty: true
     };
-  })
+  }),
+  
+  // Dashboard List Methods
+  resumeList: [],
+  isListLoading: false,
+  hasLoadedList: false,
+  fetchResumeList: async (force = false) => {
+    const { hasLoadedList, isListLoading } = get();
+    if (isListLoading) return;
+    if (hasLoadedList && !force) return;
+
+    set({ isListLoading: true });
+    try {
+      const data = await supabaseApi.getResumes();
+      if (data) {
+        set({ resumeList: data, hasLoadedList: true });
+      }
+    } catch (error) {
+      console.error('Failed to fetch resume list:', error);
+    } finally {
+      set({ isListLoading: false });
+    }
+  },
+  deleteResumeFromList: async (id: string) => {
+    const previousList = get().resumeList;
+    set((state) => ({ resumeList: state.resumeList.filter(r => r.id !== id) }));
+    
+    try {
+      const success = await supabaseApi.deleteResume(id);
+      if (!success) {
+        set({ resumeList: previousList });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to delete resume:', error);
+      set({ resumeList: previousList });
+      return false;
+    }
+  }
 };
 });

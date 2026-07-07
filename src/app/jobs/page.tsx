@@ -9,151 +9,21 @@ import { useResumeStore } from "@/store/useResumeStore";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Resume } from "@/types/resume";
-import { AddJobModal, Job, JOB_SOURCES, JOB_APPLIED_VIA, JOB_WORK_SETUPS } from "@/components/AddJobModal";
+import { AddJobModal } from "@/components/AddJobModal";
+import { Job, JOB_SOURCES, JOB_APPLIED_VIA, JOB_WORK_SETUPS } from "@/types/job";
 const JOB_STATUSES = ['saved', 'applied', 'interviewed', 'offered', 'rejected'];
-import { cn } from "@/lib/utils";
+import { cn, formatSalaryString } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-
-const InlineDatePicker = ({ date, onSelect, className, placeholder = "-" }: { date?: string, onSelect: (dateStr: string) => void, className?: string, placeholder?: string }) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={
-        <button className={cn("bg-transparent border border-transparent hover:border-input focus:border-input rounded px-2 py-1 h-8 text-sm text-left flex items-center gap-2 whitespace-nowrap", className)} />
-      }>
-        <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-        <span className="flex-1 truncate">{date ? format(new Date(date), "MMM d, yyyy") : placeholder}</span>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 z-[50] max-h-[70vh] overflow-y-auto" align="start">
-        <Calendar
-          mode="single"
-          selected={date ? new Date(date) : undefined}
-          disabled={(d) => d > new Date()}
-          onSelect={(newDate) => {
-            onSelect(newDate ? newDate.toISOString() : "");
-            setOpen(false);
-          }}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-};
-
-const getStatusColor = (status: string) => {
-  switch (status.toLowerCase()) {
-    case 'saved': return 'bg-slate-100 text-slate-700 border-slate-200';
-    case 'applied': return 'bg-blue-100 text-blue-700 border-blue-200';
-    case 'interviewed': return 'bg-amber-100 text-amber-700 border-amber-200';
-    case 'offered': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    case 'rejected': return 'bg-rose-100 text-rose-700 border-rose-200';
-    default: return 'bg-primary/10 text-primary border-primary/20';
-  }
-};
-
-const formatSalaryString = (text: string) => {
-  if (!text) return "";
-  // Remove existing commas to prevent double formatting
-  const cleanText = text.replace(/,/g, '');
-  // Format any sequence of digits with commas
-  return cleanText.replace(/\d+/g, (match) => {
-    return Number(match).toLocaleString('en-US');
-  });
-};
-
-const InlineStatusPicker = ({ status, onSelect }: { status: string, onSelect: (s: string) => void }) => {
-  const [open, setOpen] = useState(false);
-  
-  const options = [
-    { value: 'saved', label: 'Saved' },
-    { value: 'applied', label: 'Applied' },
-    { value: 'interviewed', label: 'Interviewed' },
-    { value: 'offered', label: 'Offered' },
-    { value: 'rejected', label: 'Rejected' }
-  ];
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={
-        <button className={`flex items-center justify-between gap-2 px-2.5 py-1 rounded-full border outline-none hover:opacity-80 transition-opacity ${getStatusColor(status)}`} />
-      }>
-        <span className="text-[10px] uppercase font-bold tracking-wider">{status}</span>
-        <ChevronDown className="w-3 h-3 opacity-70" />
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-1.5 z-[50]" align="start">
-        <div className="flex flex-col gap-1">
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              className="flex justify-start items-center px-1.5 py-1.5 rounded-sm hover:bg-muted"
-              onClick={() => {
-                onSelect(opt.value);
-                setOpen(false);
-              }}
-            >
-              <span className={`px-2.5 py-1 text-[10px] rounded-full uppercase font-bold tracking-wider border ${getStatusColor(opt.value)}`}>
-                {opt.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-};
-
-const EditableText = ({ 
-  value, 
-  onSave, 
-  className,
-  multiline = false
-}: { 
-  value: string; 
-  onSave: (val: string) => void; 
-  className?: string;
-  multiline?: boolean;
-}) => {
-  const ref = React.useRef<HTMLDivElement>(null);
-  
-  React.useEffect(() => {
-    if (ref.current && document.activeElement !== ref.current) {
-      if (ref.current.textContent !== value) {
-        ref.current.textContent = value;
-      }
-    }
-  }, [value]);
-
-  return (
-    <div
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      className={cn(
-        "bg-transparent border border-transparent hover:border-input focus:border-input rounded px-2 py-1 text-sm outline-none transition-colors",
-        multiline ? "whitespace-normal break-words" : "whitespace-nowrap",
-        className
-      )}
-      onBlur={(e) => {
-        const newVal = e.currentTarget.textContent || "";
-        if (newVal !== value) onSave(newVal);
-      }}
-      onKeyDown={(e) => {
-        if (!multiline && e.key === 'Enter') {
-          e.preventDefault();
-          e.currentTarget.blur();
-        }
-      }}
-    />
-  );
-};
+import { InlineDatePicker, InlineStatusPicker, EditableText, getStatusColor } from "@/components/ui/inline-editors";
+import { useJobStore } from "@/store/useJobStore";
 
 export default function JobsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { setTailoringJob } = useResumeStore();
 
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { jobs, isLoading, fetchJobs, addJob, updateJob, deleteJobs } = useJobStore();
   const [isMounted, setIsMounted] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
 
@@ -171,8 +41,6 @@ export default function JobsPage() {
 
   // Bulk Selection State
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -183,23 +51,11 @@ export default function JobsPage() {
   const [filterWorkSetup, setFilterWorkSetup] = useState("");
   const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
 
-  const loadJobs = async (isInitial = false) => {
-    if (!isInitial) setLoading(true);
-    try {
-      const data = await supabaseApi.getJobs();
-      setJobs(data as Job[]);
-    } catch (error) {
-      console.error("Failed to load jobs", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
-    loadJobs(true);
-  }, []);
+    fetchJobs();
+  }, [fetchJobs]);
 
   // Dashboard Metrics Calculation
   const metrics = React.useMemo(() => {
@@ -301,22 +157,34 @@ export default function JobsPage() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (job: Job) => {
+  const openEditModal = (job: any) => {
     setEditingJob(job);
     setIsModalOpen(true);
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedJobIds.size === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedJobIds.size} job(s)?`)) return;
+
+    const ids = Array.from(selectedJobIds);
+    const success = await deleteJobs(ids);
+    if (success) {
+      setSelectedJobIds(new Set());
+      toast({ title: "Deleted", description: `${ids.length} job(s) deleted.` });
+    } else {
+      toast({ title: "Error", description: "Failed to delete jobs.", variant: "destructive" });
+    }
+  };
+
   const executeDelete = async () => {
     if (!jobToDelete) return;
-    try {
-      await supabaseApi.deleteJob(jobToDelete);
-      setJobs(jobs.filter(j => j.id !== jobToDelete));
-      toast({ title: "Success", description: "Job deleted!" });
-    } catch {
+    const success = await deleteJobs([jobToDelete]);
+    if (success) {
+      toast({ title: "Deleted", description: "Job deleted." });
+    } else {
       toast({ title: "Error", description: "Failed to delete job", variant: "destructive" });
-    } finally {
-      setJobToDelete(null);
     }
+    setJobToDelete(null);
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -331,27 +199,7 @@ export default function JobsPage() {
     setSelectedJobIds(newSet);
   };
 
-  const handleBulkDelete = () => {
-    if (selectedJobIds.size === 0) return;
-    setIsBulkDeleteModalOpen(true);
-  };
-
-  const executeBulkDelete = async () => {
-    setIsBulkDeleting(true);
-    try {
-      await Promise.all(Array.from(selectedJobIds).map(id => supabaseApi.deleteJob(id)));
-      toast({ title: "Deleted", description: `${selectedJobIds.size} jobs deleted successfully.` });
-      setSelectedJobIds(new Set());
-      setIsBulkDeleteModalOpen(false);
-      loadJobs();
-    } catch {
-      toast({ title: "Error", description: "Failed to delete some jobs.", variant: "destructive" });
-    } finally {
-      setIsBulkDeleting(false);
-    }
-  };
-
-  const handleTailor = async (job: Job) => {
+  const handleTailor = async (job: any) => {
     setTailorModalJob(job);
     setLoadingResumes(true);
     try {
@@ -402,20 +250,33 @@ export default function JobsPage() {
     }
   };
 
-  const handleInlineEdit = async (jobId: string, field: keyof Job, value: string) => {
-    const jobToUpdate = jobs.find(j => j.id === jobId);
-    if (!jobToUpdate) return;
-    
-    // Optimistic update
-    setJobs(jobs.map(j => j.id === jobId ? { ...j, [field]: value } : j));
-    
-    try {
-      const updatedJob = { ...jobToUpdate, [field]: value };
-      await supabaseApi.saveJob(updatedJob);
-      toast({ title: "Updated", description: "Job detail saved." });
-    } catch {
-      toast({ title: "Error", description: "Failed to save inline edit", variant: "destructive" });
-      loadJobs(); // revert on fail
+  const handleInlineEdit = async (jobId: string, field: string, value: any) => {
+    const success = await updateJob(jobId, { [field]: value });
+    if (success) {
+      toast({ title: "Updated", description: "Job updated successfully." });
+    } else {
+      toast({ title: "Error", description: "Failed to update job.", variant: "destructive" });
+    }
+  };
+
+  const handleAddJob = async (jobData: any) => {
+    const newJob = await addJob(jobData);
+    if (newJob) {
+      setIsModalOpen(false);
+      toast({ title: "Success", description: "Job saved successfully." });
+    } else {
+      toast({ title: "Error", description: "Failed to save job.", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateJob = async (id: string, jobData: any) => {
+    const success = await updateJob(id, jobData);
+    if (success) {
+      setIsModalOpen(false);
+      setEditingJob(null);
+      toast({ title: "Success", description: "Job updated successfully." });
+    } else {
+      toast({ title: "Error", description: "Failed to update job.", variant: "destructive" });
     }
   };
 
@@ -430,6 +291,9 @@ export default function JobsPage() {
   };
 
   if (!isMounted) return null;
+  if (isLoading) {
+    return <div className="flex-1 flex items-center justify-center">Loading jobs...</div>;
+  }
 
   return (
     <div className="flex-1 p-8 md:p-12 bg-muted/10 overflow-y-auto">
@@ -444,7 +308,6 @@ export default function JobsPage() {
               <Button 
                 variant="destructive" 
                 onClick={handleBulkDelete}
-                disabled={isBulkDeleting}
                 className="gap-2"
               >
                 <Trash2 className="w-4 h-4" />
@@ -664,7 +527,7 @@ export default function JobsPage() {
           </div>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="py-20 text-center text-muted-foreground">Loading jobs...</div>
         ) : (
           <div className="border rounded-md bg-white shadow-sm overflow-x-auto w-full">
@@ -811,7 +674,7 @@ export default function JobsPage() {
                           <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => toggleExpand(job.id)}>
                             {expandedJobs.has(job.id) ? "▲" : "▼"}
                           </Button>
-                          <Button variant="outline" size="sm" className="h-8 text-xs font-semibold" onClick={() => handleTailor(job)}>
+                          <Button variant="outline" size="sm" className="h-8 text-xs font-semibold" onClick={() => handleTailor(job)} disabled={!job.description}>
                             ✨ Tailor
                           </Button>
                           <Button variant="secondary" size="icon" className="h-8 w-8" onClick={() => openEditModal(job)} title="Edit">
@@ -845,7 +708,7 @@ export default function JobsPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         job={editingJob}
-        onSaved={() => loadJobs()}
+        onSaved={() => fetchJobs()}
       />
 
       {/* Delete Confirmation Overlay */}
@@ -857,22 +720,6 @@ export default function JobsPage() {
             <div className="flex justify-center gap-3 mt-4">
               <Button variant="outline" onClick={() => setJobToDelete(null)}>Cancel</Button>
               <Button variant="destructive" onClick={executeDelete}>Delete</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Delete Confirmation Overlay */}
-      {isBulkDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center animate-in fade-in">
-          <div className="bg-background rounded-lg shadow-xl w-96 overflow-hidden flex flex-col p-6 text-center gap-4 animate-in zoom-in-95">
-            <h2 className="font-semibold text-lg text-foreground">Delete {selectedJobIds.size} Jobs?</h2>
-            <p className="text-sm text-muted-foreground">This action cannot be undone. Are you sure you want to permanently delete these applications?</p>
-            <div className="flex justify-center gap-3 mt-4">
-              <Button variant="outline" onClick={() => setIsBulkDeleteModalOpen(false)} disabled={isBulkDeleting}>Cancel</Button>
-              <Button variant="destructive" onClick={executeBulkDelete} disabled={isBulkDeleting}>
-                {isBulkDeleting ? "Deleting..." : "Delete"}
-              </Button>
             </div>
           </div>
         </div>

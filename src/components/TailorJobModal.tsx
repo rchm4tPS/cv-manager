@@ -8,17 +8,7 @@ import { Resume } from "@/types/resume";
 import { createPortal } from "react-dom";
 import { AddJobModal } from "./AddJobModal";
 
-interface Job {
-  id: string;
-  company: string;
-  position: string;
-  location?: string;
-  status: string;
-  link?: string;
-  dateAdded: string;
-  dateApplied?: string;
-  description?: string;
-}
+import { Job } from "@/types/job";
 
 interface TailorJobModalProps {
   isOpen: boolean;

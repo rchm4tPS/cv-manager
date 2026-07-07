@@ -116,7 +116,64 @@ export const supabaseApi = {
       console.error('Error saving job:', error);
       throw error;
     }
-    return data;
+    return {
+      id: data.id,
+      company: data.company,
+      position: data.position,
+      location: data.location,
+      status: data.status,
+      link: data.link,
+      dateAdded: data.date_added,
+      dateApplied: data.date_applied,
+      description: data.description,
+      source: data.source,
+      appliedVia: data.applied_via,
+      salaryRange: data.salary_range,
+      workSetup: data.work_setup
+    };
+  },
+
+  async updateJob(id: string, updates: any) {
+    const dbUpdates: any = {};
+    if (updates.company !== undefined) dbUpdates.company = updates.company;
+    if (updates.position !== undefined) dbUpdates.position = updates.position;
+    if (updates.location !== undefined) dbUpdates.location = updates.location;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.link !== undefined) dbUpdates.link = updates.link;
+    if (updates.dateAdded !== undefined) dbUpdates.date_added = updates.dateAdded;
+    if (updates.dateApplied !== undefined) dbUpdates.date_applied = updates.dateApplied;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.source !== undefined) dbUpdates.source = updates.source;
+    if (updates.appliedVia !== undefined) dbUpdates.applied_via = updates.appliedVia;
+    if (updates.salaryRange !== undefined) dbUpdates.salary_range = updates.salaryRange;
+    if (updates.workSetup !== undefined) dbUpdates.work_setup = updates.workSetup;
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .update(dbUpdates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating job:', error);
+      throw error;
+    }
+    return {
+      id: data.id,
+      company: data.company,
+      position: data.position,
+      location: data.location,
+      status: data.status,
+      link: data.link,
+      dateAdded: data.date_added,
+      dateApplied: data.date_applied,
+      description: data.description,
+      source: data.source,
+      appliedVia: data.applied_via,
+      salaryRange: data.salary_range,
+      workSetup: data.work_setup
+    };
   },
 
   async getJobs(userId: string = 'local-user') {

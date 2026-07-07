@@ -10,30 +10,9 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabaseApi } from "@/lib/supabase-api";
 import { createPortal } from "react-dom";
+import { useJobStore } from "@/store/useJobStore";
 
-export type JobSource = 'relasi/teman' | 'keluarga' | 'dosen' | 'linked in' | 'grup WA' | 'website perusahaan' | 'glints' | 'jobstreet' | 'indeed' | 'mendapat sendiri di dunia nyata';
-export type JobAppliedVia = 'email' | 'website perusahaan' | 'google form' | 'glints' | 'jobstreet' | 'linked in easy apply' | 'indeed' | 'ordal' | 'dikirim ke tempat';
-export type JobWorkSetup = 'WFO' | 'WFH' | 'Hybrid';
-
-export const JOB_SOURCES: JobSource[] = ['relasi/teman', 'keluarga', 'dosen', 'linked in', 'grup WA', 'website perusahaan', 'glints', 'jobstreet', 'indeed', 'mendapat sendiri di dunia nyata'];
-export const JOB_APPLIED_VIA: JobAppliedVia[] = ['email', 'website perusahaan', 'google form', 'glints', 'jobstreet', 'linked in easy apply', 'indeed', 'ordal', 'dikirim ke tempat'];
-export const JOB_WORK_SETUPS: JobWorkSetup[] = ['WFO', 'WFH', 'Hybrid'];
-
-export interface Job {
-  id: string;
-  company: string;
-  position: string;
-  location: string;
-  status: string;
-  link: string;
-  dateAdded: string;
-  dateApplied?: string;
-  description: string;
-  source?: JobSource;
-  appliedVia?: JobAppliedVia;
-  salaryRange?: string;
-  workSetup?: JobWorkSetup;
-}
+import { Job, JobSource, JobAppliedVia, JobWorkSetup, JOB_SOURCES, JOB_APPLIED_VIA, JOB_WORK_SETUPS } from "@/types/job";
 
 interface AddJobModalProps {
   isOpen: boolean;
@@ -128,11 +107,19 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
         id: job ? job.id : `temp-${Date.now()}`,
         dateAdded: job ? job.dateAdded : new Date().toISOString(),
         dateApplied: dateApplied ? dateApplied.toISOString() : undefined,
-        ...restFormData
+        ...restFormData,
+        source: restFormData.source === "" ? undefined : restFormData.source as any,
+        appliedVia: restFormData.appliedVia === "" ? undefined : restFormData.appliedVia as any,
+        workSetup: restFormData.workSetup === "" ? undefined : restFormData.workSetup as any,
       };
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await supabaseApi.saveJob(jobToSave as any);
+      const jobStore = useJobStore.getState();
+      if (job) {
+        await jobStore.updateJob(job.id, jobToSave);
+      } else {
+        await jobStore.addJob(jobToSave);
+      }
       
       toast({
         title: "Success",
@@ -170,7 +157,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
               <div className="relative">
                 <input 
                   type="text" className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                  value={formData.company} onChange={e => {
+                  value={formData.company || ""} onChange={e => {
                     setFormData({...formData, company: e.target.value});
                     setIsCompanyFocused(true);
                   }}
@@ -201,7 +188,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
               <label className="text-xs font-semibold text-muted-foreground uppercase">Position</label>
               <input 
                 type="text" className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})}
+                value={formData.position || ""} onChange={e => setFormData({...formData, position: e.target.value})}
               />
             </div>
           </div>
@@ -211,14 +198,14 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
               <label className="text-xs font-semibold text-muted-foreground uppercase">Location</label>
               <input 
                 type="text" className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})}
+                value={formData.location || ""} onChange={e => setFormData({...formData, location: e.target.value})}
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase">Status</label>
               <select 
                 className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}
+                value={formData.status || "saved"} onChange={e => setFormData({...formData, status: e.target.value})}
               >
                 <option value="saved">Saved</option>
                 <option value="applied">Applied</option>
@@ -235,7 +222,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
               <input 
                 type="url" className="w-full h-9 rounded-md border bg-white px-3 text-sm"
                 placeholder="https://..."
-                value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})}
+                value={formData.link || ""} onChange={e => setFormData({...formData, link: e.target.value})}
               />
             </div>
             <div className="space-y-1.5">
@@ -260,7 +247,9 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
                       selected={formData.dateApplied || undefined}
                       disabled={(date) => date > new Date()}
                       onSelect={(date) => {
-                        setFormData({...formData, dateApplied: date || null});
+                        if (date) {
+                          setFormData({...formData, dateApplied: date});
+                        }
                         setIsCalendarOpen(false);
                       }}
                     />
@@ -275,7 +264,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
               <label className="text-xs font-semibold text-muted-foreground uppercase">Source</label>
               <select 
                 className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.source} onChange={e => setFormData({...formData, source: e.target.value as JobSource})}
+                value={formData.source || ""} onChange={e => setFormData({...formData, source: e.target.value as JobSource})}
               >
                 <option value="">Select source...</option>
                 {JOB_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -285,7 +274,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
               <label className="text-xs font-semibold text-muted-foreground uppercase">Applied Via</label>
               <select 
                 className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.appliedVia} onChange={e => setFormData({...formData, appliedVia: e.target.value as JobAppliedVia})}
+                value={formData.appliedVia || ""} onChange={e => setFormData({...formData, appliedVia: e.target.value as JobAppliedVia})}
               >
                 <option value="">Select application method...</option>
                 {JOB_APPLIED_VIA.map(s => <option key={s} value={s}>{s}</option>)}
@@ -299,14 +288,14 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
               <input 
                 type="text" className="w-full h-9 rounded-md border bg-white px-3 text-sm"
                 placeholder="e.g. 5,000,000 - 7,000,000"
-                value={formData.salaryRange} onChange={e => setFormData({...formData, salaryRange: e.target.value})}
+                value={formData.salaryRange || ""} onChange={e => setFormData({...formData, salaryRange: e.target.value})}
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase">Work Setup</label>
               <select 
                 className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.workSetup} onChange={e => setFormData({...formData, workSetup: e.target.value as JobWorkSetup})}
+                value={formData.workSetup || ""} onChange={e => setFormData({...formData, workSetup: e.target.value as JobWorkSetup})}
               >
                 <option value="">Select work setup...</option>
                 {JOB_WORK_SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -319,7 +308,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
             <textarea 
               className="w-full h-32 rounded-md border bg-white p-3 text-sm resize-none"
               placeholder="Paste the job description here for the AI to tailor against..."
-              value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
+              value={formData.description || ""} onChange={e => setFormData({...formData, description: e.target.value})}
             />
           </div>
         </div>
