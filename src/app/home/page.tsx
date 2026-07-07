@@ -61,7 +61,7 @@ export default function HomePage() {
     }
   };
 
-  const handleUploadSuccess = async (parsedData: any, filename: string) => {
+  const handleUploadSuccess = async (parsedData: Partial<Resume>, filename: string) => {
     try {
       const defaultSettings: DocumentSettings = {
         pageSize: 'Letter',

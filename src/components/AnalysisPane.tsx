@@ -48,7 +48,7 @@ export function AnalysisPane() {
   const hasMinimalData = !!(resume.personalInfo.name?.trim()) &&
     resume.sections.some(s => s.type === 'summary' && s.items.length > 0) &&
     resume.sections.some(s => (s.type === 'experience' || s.type === 'projects') && s.items.length > 0);
-  const analyzeDisabled = analyzing || isCooldownActive || hasPendingSuggestions || !hasMinimalData;
+  const analyzeDisabled = analyzing || isCooldownActive || !hasMinimalData;
 
   const isPerfect = !!(analysisResult && analysisResult.steps.every(s => s.recommendations.length === 0));
   const isFullyTailored = !!(tailoringJob && isPerfect);

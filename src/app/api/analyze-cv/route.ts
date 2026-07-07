@@ -17,11 +17,12 @@ Perform a rigorous review based on the following criteria:
 6. Skills: Checks for keyword optimization and skill relevance.
 7. Format & Structure: Checks for overall consistent formatting and a clear visual layout to ensure readability.
 
-CRITICAL LANGUAGE RULE: Identify the original language of the CV (e.g., Indonesian, English). All your analysis, feedback, and recommendations MUST be written in the exact same language as the CV. If the CV is in Indonesian, you MUST reply in Indonesian.
+CRITICAL LANGUAGE RULE: Smartly identify the primary language of the CV's written content (e.g., English, Indonesian). Do NOT merely rely upon the user's country or location in their profile. If the CV contains mixed languages (e.g. English descriptions but Indonesian proper nouns like company or university names), determine the language based STRICTLY on the professional descriptions, summaries, and bullet points. NEVER respond in Indonesian just because of Indonesian proper nouns. All your analysis, feedback, and recommendations MUST be written in the exact same language as the CV's primary descriptions.
 
 Return your complete analysis strictly as a JSON object matching the following structure exactly (do not wrap in markdown code blocks like \`\`\`json, just return the raw JSON object):
 
 {
+  "detectedLanguage": "<Specify the primary language detected from descriptions here, e.g., 'English'>",
   "score": <number 0-100 representing the overall strength of the CV>,
   "steps": [
     {
@@ -101,10 +102,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { resume, tailoringJob } = body as { resume: Resume, tailoringJob?: { company: string, position: string, description: string } };
 
-    // Strip out heavy/unnecessary UI settings to save tokens and focus the AI
+    // Strip out heavy/unnecessary UI settings and location data that biases the AI's language detection
     const sanitizedResume = {
       title: resume.title,
-      personalInfo: resume.personalInfo,
+      personalInfo: {
+        ...resume.personalInfo,
+        country: undefined,
+        city: undefined,
+        address: undefined
+      },
       sections: resume.sections,
     };
     
@@ -126,9 +132,12 @@ ${resume.rejectedSuggestions?.length ? `The user REJECTED these past suggestions
 First, extract the most critical hard skills, soft skills, and keywords from the Job Description.
 Then, evaluate how well the CV aligns with these extracted keywords.
 
+CRITICAL LANGUAGE RULE: Smartly identify the primary language of the CV's written content (e.g., English, Indonesian). Do NOT merely rely upon the user's country or location in their profile. If the CV contains mixed languages (e.g. English descriptions but Indonesian proper nouns like company or university names), determine the language based STRICTLY on the professional descriptions, summaries, and bullet points. NEVER respond in Indonesian just because of Indonesian proper nouns. **CRITICAL: Even if the provided Job Description is written in a different language (like Indonesian), your analysis, feedback, and recommendations MUST be written in the exact same language as the CV's primary descriptions.**
+
 Return your complete analysis strictly as a JSON object matching the following structure exactly (do not wrap in markdown code blocks like \`\`\`json, just return the raw JSON object):
 
 {
+  "detectedLanguage": "<Specify the primary language detected from descriptions here, e.g., 'English'>",
   "score": <number 0-100 representing how well the CV currently matches the JD>,
   "steps": [
     {
@@ -186,7 +195,16 @@ If a section is perfectly aligned, or if the CV lacks it, the "recommendations" 
 
       const tailoringContext = `CRITICAL: The candidate is specifically tailoring their CV for the position of "${tailoringJob.position}" at "${tailoringJob.company}".\nHere is the Job Description:\n"""\n${tailoringJob.description}\n"""\nYou MUST cross-reference the CV with the Job Description. Highlight missing keywords, required skills, and suggest specific rewrites in the CV to directly match the Job Description requirements. Surface these missing keywords as high-priority actionable recommendations.`;
       
-      prompt = `${TAILORING_PROMPT}\n\n${dateContextPrompt}\n\n${memoryContextPrompt}\n\n${tailoringContext}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
+      const FINAL_LANGUAGE_WARNING = `
+=========================================
+CRITICAL DIRECTIVE - LANGUAGE ENFORCEMENT
+=========================================
+You MUST output your ENTIRE JSON response (including all assessments, titles, and recommendations) in the EXACT language of the candidate's professional summaries and work experience. 
+DO NOT default to Indonesian. Evaluate the text! If the bullet points are in English, YOU MUST WRITE YOUR JSON IN ENGLISH.
+Even if the provided Job Description is written in a different language (like Indonesian), your analysis, feedback, and recommendations MUST be written in the exact same language as the CV's primary descriptions.
+=========================================`;
+
+      prompt = `${TAILORING_PROMPT}\n\n${dateContextPrompt}\n\n${memoryContextPrompt}\n\n${tailoringContext}\n\n${FINAL_LANGUAGE_WARNING}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
     } else {
       let targetRolePrompt = "";
       if (resume.personalInfo.jobTitle && resume.personalInfo.jobTitle.trim() !== "") {
@@ -194,7 +212,16 @@ If a section is perfectly aligned, or if the CV lacks it, the "recommendations" 
       } else {
         targetRolePrompt = `The candidate has not specified a target role. Please analyze the CV generally as it would be perceived by an ATS, and infer the target industry/role based on the majority of their work experience and skills.`;
       }
-      prompt = `${SYSTEM_PROMPT}\n\n${dateContextPrompt}\n\n${memoryContextPrompt}\n\n${targetRolePrompt}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
+      
+      const FINAL_LANGUAGE_WARNING = `
+=========================================
+CRITICAL DIRECTIVE - LANGUAGE ENFORCEMENT
+=========================================
+You MUST output your ENTIRE JSON response (including all assessments, titles, and recommendations) in the EXACT language of the candidate's professional summaries and work experience. 
+DO NOT default to Indonesian. Evaluate the text! If the bullet points are in English, YOU MUST WRITE YOUR JSON IN ENGLISH.
+=========================================`;
+
+      prompt = `${SYSTEM_PROMPT}\n\n${dateContextPrompt}\n\n${memoryContextPrompt}\n\n${targetRolePrompt}\n\n${FINAL_LANGUAGE_WARNING}\n\nHere is the CV JSON to analyze:\n${JSON.stringify(sanitizedResume, null, 2)}`;
     }
 
     // Note: Assuming ai.models.generateContent is the correct method from @google/genai
@@ -202,6 +229,7 @@ If a section is perfectly aligned, or if the CV lacks it, the "recommendations" 
       model: 'gemini-3.1-flash-lite',
       contents: prompt,
       config: {
+        systemInstruction: "You are an elite Executive Recruiter. CRITICAL: Analyze the CV's primary descriptions and bullet points. Output your ENTIRE JSON analysis in the exact same language as the CV's descriptions (e.g., if the CV is in English, reply in English). Do NOT default to Indonesian. Ignore the language of the Job Description when determining your response language.",
         temperature: 0.2, // Low temperature for more consistent, analytical output
         responseMimeType: "application/json",
       }

@@ -62,6 +62,9 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
     workSetup: "" as JobWorkSetup | ""
   });
 
+  const [existingCompanies, setExistingCompanies] = useState<string[]>([]);
+  const [isCompanyFocused, setIsCompanyFocused] = useState(false);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
@@ -99,6 +102,12 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
           workSetup: ""
         });
       }
+      
+      // Fetch existing companies for autocomplete
+      supabaseApi.getJobs().then(jobs => {
+        const companies = Array.from(new Set(jobs.map(j => j.company).filter(Boolean)));
+        setExistingCompanies(companies);
+      }).catch(console.error);
     }
   }, [isOpen, job]);
 
@@ -154,14 +163,39 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
           <button onClick={onClose} disabled={isSaving} className="text-muted-foreground hover:text-foreground">✕</button>
         </div>
         
-        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase">Company</label>
-              <input 
-                type="text" className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})}
-              />
+              <div className="relative">
+                <input 
+                  type="text" className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                  value={formData.company} onChange={e => {
+                    setFormData({...formData, company: e.target.value});
+                    setIsCompanyFocused(true);
+                  }}
+                  onFocus={() => setIsCompanyFocused(true)}
+                  onBlur={() => setIsCompanyFocused(false)}
+                  autoComplete="off"
+                />
+                {isCompanyFocused && existingCompanies.filter(c => c.toLowerCase().includes(formData.company.toLowerCase()) && c !== formData.company).length > 0 && (
+                  <div className="absolute top-full left-0 mt-1 z-50 flex w-full max-h-48 overflow-y-auto flex-col rounded-lg bg-popover p-1 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 animate-in fade-in-0 zoom-in-95 duration-100">
+                    {existingCompanies.filter(c => c.toLowerCase().includes(formData.company.toLowerCase()) && c !== formData.company).map(c => (
+                      <div 
+                        key={c}
+                        className="px-2 py-1.5 text-sm rounded-md hover:bg-muted cursor-pointer transition-colors even:bg-muted/100"
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // Prevents the input from losing focus
+                          setFormData({...formData, company: c});
+                          setIsCompanyFocused(false);
+                        }}
+                      >
+                        {c}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase">Position</label>

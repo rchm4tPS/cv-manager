@@ -4,18 +4,19 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Upload, X, FileText, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Resume, Section, ResumeItem } from '@/types/resume';
 
 interface CvUploadOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (resumeData: any, filename: string) => void;
+  onSuccess: (resumeData: Partial<Resume>, filename: string) => void;
 }
 
 export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverlayProps) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [file, setFile] = useState<File | null>(null);
   const [rawText, setRawText] = useState<string>('');
-  const [parsedData, setParsedData] = useState<any>(null);
+  const [parsedData, setParsedData] = useState<Partial<Resume> | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -23,6 +24,7 @@ export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverl
   // Reset state when opened
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStep(1);
       setFile(null);
       setRawText('');
@@ -71,9 +73,9 @@ export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverl
       const data = await response.json();
       setRawText(data.text);
       setIsProcessing(false);
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      setError(err.message || 'Error parsing PDF');
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      setError(err instanceof Error ? err.message : 'Error parsing PDF');
       setIsProcessing(false);
     }
   };
@@ -101,9 +103,9 @@ export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverl
       setParsedData(resData.data);
       setStep(4);
       setIsProcessing(false);
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      setError(err.message || 'Error extracting data');
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      setError(err instanceof Error ? err.message : 'Error extracting data');
       setIsProcessing(false);
       setStep(2); // Go back to raw text step so they can retry
     }
@@ -176,7 +178,7 @@ export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverl
                   <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
                     <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
                     <p className="font-medium text-slate-700">Extracting text from PDF...</p>
-                    <p className="text-sm mt-2 max-w-xs text-center">This takes just a moment. We're pulling all the raw text from your document.</p>
+                    <p className="text-sm mt-2 max-w-xs text-center">This takes just a moment. We&apos;re pulling all the raw text from your document.</p>
                   </div>
                 ) : (
                   <div className="flex flex-col h-full">
@@ -260,14 +262,14 @@ export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverl
                   </div>
 
                   {/* Sections */}
-                  {parsedData.sections?.map((section: any) => (
+                  {parsedData.sections?.map((section: Section) => (
                     <div key={section.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                       <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 border-b pb-2 flex justify-between items-center">
                         {section.title}
                         <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full capitalize">{section.type}</span>
                       </h4>
                       <div className="space-y-4">
-                        {section.items?.map((item: any) => (
+                        {section.items?.map((item: ResumeItem) => (
                           <div key={item.id} className="text-sm">
                             <div className="font-semibold text-slate-800">{item.title}</div>
                             {item.subtitle && <div className="text-slate-600">{item.subtitle}</div>}
@@ -305,8 +307,8 @@ export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverl
               </Button>
             )}
             
-            {step === 4 && (
-              <Button onClick={() => onSuccess(parsedData, file?.name || 'Imported Resume')} className="bg-blue-600 hover:bg-blue-700 text-white">
+            {step === 4 && parsedData && (
+              <Button onClick={() => onSuccess(parsedData as Partial<Resume>, file?.name || 'Imported Resume')} className="bg-blue-600 hover:bg-blue-700 text-white">
                 Generate New CV
                 <FileText className="w-4 h-4 ml-2" />
               </Button>

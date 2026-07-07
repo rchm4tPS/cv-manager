@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Resume } from "@/types/resume";
 import { AddJobModal, Job, JOB_SOURCES, JOB_APPLIED_VIA, JOB_WORK_SETUPS } from "@/components/AddJobModal";
+const JOB_STATUSES = ['saved', 'applied', 'interviewed', 'offered', 'rejected'];
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -180,6 +181,7 @@ export default function JobsPage() {
   const [filterSource, setFilterSource] = useState("");
   const [filterAppliedVia, setFilterAppliedVia] = useState("");
   const [filterWorkSetup, setFilterWorkSetup] = useState("");
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
 
   const loadJobs = async (isInitial = false) => {
     if (!isInitial) setLoading(true);
@@ -224,10 +226,16 @@ export default function JobsPage() {
       else if (job.status === 'rejected') rejectedCount++;
 
       if (job.status !== 'saved' && job.dateApplied) {
-        const d = new Date(job.dateApplied);
-        if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+        const dateStr = typeof job.dateApplied === 'string' 
+          ? job.dateApplied.substring(0, 10) 
+          : new Date(job.dateApplied).toISOString().substring(0, 10);
+        
+        const y = parseInt(dateStr.substring(0, 4));
+        const m = parseInt(dateStr.substring(5, 7)) - 1;
+
+        if (y === currentYear && m === currentMonth) {
           currentMonthApplied++;
-        } else if (d.getFullYear() === lastMonthYear && d.getMonth() === lastMonth) {
+        } else if (y === lastMonthYear && m === lastMonth) {
           lastMonthApplied++;
         }
       }
@@ -268,6 +276,9 @@ export default function JobsPage() {
       if (filterSource && job.source !== filterSource) return false;
       if (filterAppliedVia && job.appliedVia !== filterAppliedVia) return false;
       if (filterWorkSetup && job.workSetup !== filterWorkSetup) return false;
+      
+      // Status Checkbox Filter
+      if (filterStatuses.length > 0 && !filterStatuses.includes(job.status)) return false;
 
       // Date Applied Filter (Full Date)
       if (filterDateFrom || filterDateTo) {
@@ -283,7 +294,7 @@ export default function JobsPage() {
 
       return true;
     });
-  }, [jobs, searchQuery, filterDateFrom, filterDateTo, filterSource, filterAppliedVia, filterWorkSetup]);
+  }, [jobs, searchQuery, filterDateFrom, filterDateTo, filterSource, filterAppliedVia, filterWorkSetup, filterStatuses]);
 
   const openAddModal = () => {
     setEditingJob(null);
@@ -539,7 +550,7 @@ export default function JobsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {(searchQuery || filterDateFrom || filterDateTo || filterSource || filterAppliedVia || filterWorkSetup) && (
+            {(searchQuery || filterDateFrom || filterDateTo || filterSource || filterAppliedVia || filterWorkSetup || filterStatuses.length > 0) && (
               <Button 
                 variant="ghost" 
                 title="Clear Filters"
@@ -551,6 +562,7 @@ export default function JobsPage() {
                   setFilterSource("");
                   setFilterAppliedVia("");
                   setFilterWorkSetup("");
+                  setFilterStatuses([]);
                 }}
               >
                 <X className="w-4 h-4 mr-1" /> Clear
@@ -561,7 +573,7 @@ export default function JobsPage() {
               <PopoverTrigger render={<Button variant="outline" className="gap-2 relative" />}>
                 <Filter className="w-4 h-4" /> 
                 Filters
-                {(filterDateFrom || filterDateTo || filterSource || filterAppliedVia || filterWorkSetup) && (
+                {(filterDateFrom || filterDateTo || filterSource || filterAppliedVia || filterWorkSetup || filterStatuses.length > 0) && (
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white" />
                 )}
               </PopoverTrigger>
@@ -569,6 +581,31 @@ export default function JobsPage() {
                 <div className="space-y-1.5 border-b pb-3">
                   <h4 className="font-semibold text-sm">Filter Jobs</h4>
                   <p className="text-xs text-muted-foreground">Narrow down your applications</p>
+                </div>
+
+                
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Status</label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    {JOB_STATUSES.map(status => (
+                      <label key={status} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded-md -ml-1.5 transition-colors">
+                        <input 
+                          type="checkbox"
+                          className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                          checked={filterStatuses.includes(status)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFilterStatuses(prev => [...prev, status]);
+                            } else {
+                              setFilterStatuses(prev => prev.filter(s => s !== status));
+                            }
+                          }}
+                        />
+                        <span className="capitalize">{status}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="space-y-2">

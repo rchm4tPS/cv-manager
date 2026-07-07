@@ -56,31 +56,6 @@ interface ResumeStore {
   redo: () => void;
 }
 
-const defaultResume: Resume = {
-  id: 'new',
-  userId: 'local-user',
-  title: 'Untitled Resume',
-  personalInfo: {
-    name: 'John Doe',
-    jobTitle: 'Front End Developer',
-    email: 'john.doe@gmail.com',
-    phone: 'Enter phone number here',
-    location: 'Indonesia',
-    linkedin: 'https://www.linkedin.com/in/#',
-    website: 'https://portfolio',
-    github: 'https://github.com/',
-  },
-  sections: [],
-  settings: {
-    pageSize: 'Letter',
-    margin: { top: 1, bottom: 1, left: 1, right: 1 },
-    typography: { fontFamily: "'Times New Roman', Times, serif", fontSize: 11, titleSize: 28, headingSize: 14, bodySize: 13, lineHeight: 1.5, textAlign: 'left' },
-    spacing: { nameGap: 12, headerGap: 16, sectionGap: 16, titleGap: 8, itemGap: 12, lineGap: 4, bulletGap: 4 },
-  },
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
 const blankResume: Resume = {
   id: 'new',
   userId: 'local-user',
@@ -118,6 +93,20 @@ const getInitialTailoringJob = () => {
   return null;
 };
 
+const getInitialTheme = (): 'default' | 'anthropic' => {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('appTheme');
+      if (stored === 'anthropic' || stored === 'default') {
+        return stored;
+      }
+    } catch {
+      return 'default';
+    }
+  }
+  return 'default';
+};
+
 export const useResumeStore = create<ResumeStore>((set, get) => {
   let debounceTimeout: NodeJS.Timeout;
   let lastSnapshot: Resume | null = null;
@@ -143,7 +132,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   };
 
   return {
-  resume: defaultResume,
+  resume: blankResume,
   tailoringJob: getInitialTailoringJob(),
   isDirty: false,
   setIsDirty: (dirty) => set({ isDirty: dirty }),
@@ -332,8 +321,13 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   analysisCooldownUntil: null,
   setAnalysisCooldownUntil: (time) => set({ analysisCooldownUntil: time }),
 
-  appTheme: 'default',
-  setAppTheme: (theme) => set({ appTheme: theme }),
+  appTheme: getInitialTheme(),
+  setAppTheme: (theme) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('appTheme', theme);
+    }
+    set({ appTheme: theme });
+  },
 
   // Methods
   updatePersonalInfo: (info) =>
@@ -386,7 +380,24 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       },
       isDirty: true,
     })),
-  initBlankResume: () => set({ resume: blankResume, isDirty: false, pastStates: [], futureStates: [] }),
+  initBlankResume: () => set({ 
+    resume: blankResume, 
+    isDirty: false, 
+    pastStates: [], 
+    futureStates: [],
+    analysisResult: null,
+    editorSuggestions: [],
+    analysisMode: 'inactive',
+    activeAnalysisStep: null,
+    isChatOpen: false,
+    pendingChanges: null,
+    showOriginal: false,
+    chatMessages: [
+      { role: "ai", text: "Hi there! I can help you improve your resume. Ask me for feedback or improvements, and I can directly edit your resume." }
+    ],
+    pendingAiMessage: null,
+    activeSuggestionIdForChat: null
+  }),
   updateTitle: (title) =>
     setWithHistory((state) => ({
       resume: {

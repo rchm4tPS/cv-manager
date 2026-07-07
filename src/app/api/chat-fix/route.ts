@@ -12,7 +12,7 @@ Your objective is to:
 2. Provide a brief, conversational response to the user acknowledging the change.
 3. Provide the specific, modified CV data that applies the requested changes.
 
-CRITICAL LANGUAGE RULE: Identify the original language of the CV (e.g., Indonesian, English). All your thoughts, replies, and modified CV content MUST be written in the exact same language as the CV. If the CV is in Indonesian, you MUST reply and write content in Indonesian.
+CRITICAL LANGUAGE RULE: Smartly identify the primary language of the CV's written content (e.g., English, Indonesian). Do NOT merely rely upon the user's country or location in their profile. If the CV contains mixed languages (e.g. English descriptions but Indonesian proper nouns like company or university names), determine the language based STRICTLY on the professional descriptions, summaries, and bullet points. NEVER respond in Indonesian just because of Indonesian proper nouns. All your thoughts, replies, and modified CV content MUST be written in the exact same language as the CV's primary descriptions.
 
 You must return a JSON object matching this schema exactly:
 {
@@ -37,10 +37,15 @@ export async function POST(req: NextRequest) {
       stepId: string | null;
     };
 
-    // Strip out heavy/unnecessary UI settings to save tokens
+    // Strip out heavy/unnecessary UI settings and location data to prevent geographic bias
     const sanitizedResume = {
       title: resume.title,
-      personalInfo: resume.personalInfo,
+      personalInfo: {
+        ...resume.personalInfo,
+        country: undefined,
+        city: undefined,
+        address: undefined
+      },
       sections: resume.sections,
     };
     
@@ -57,13 +62,22 @@ ${resume.rejectedSuggestions?.length ? `The user REJECTED these past suggestions
       : "";
 
     const conversationContext = messages.map(m => `${m.role.toUpperCase()}: ${m.text}`).join('\n');
+    
+    const FINAL_LANGUAGE_WARNING = `
+=========================================
+CRITICAL DIRECTIVE - LANGUAGE ENFORCEMENT
+=========================================
+You MUST output your ENTIRE JSON response (including your thought, reply, and proposed changes) in the EXACT language of the candidate's professional summaries and work experience. 
+DO NOT default to Indonesian. Evaluate the text! If the bullet points are in English, YOU MUST WRITE YOUR JSON IN ENGLISH.
+=========================================`;
 
-    const prompt = `${SYSTEM_PROMPT}\n\n${stepContext}\n\n${memoryContextPrompt}\n\nCurrent CV JSON:\n${JSON.stringify(sanitizedResume, null, 2)}\n\nConversation History:\n${conversationContext}\n\nAI (Return JSON):`;
+    const prompt = `${SYSTEM_PROMPT}\n\n${stepContext}\n\n${memoryContextPrompt}\n\n${FINAL_LANGUAGE_WARNING}\n\nCurrent CV JSON:\n${JSON.stringify(sanitizedResume, null, 2)}\n\nConversation History:\n${conversationContext}\n\nAI (Return JSON):`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.1-flash-lite',
       contents: prompt,
       config: {
+        systemInstruction: "You are an elite Resume AI Assistant. CRITICAL: Output your ENTIRE JSON response (thought, reply, proposedChanges) in the exact same language as the CV's professional descriptions. Do NOT default to Indonesian. Ignore the user's location.",
         temperature: 0.4, 
         responseMimeType: "application/json",
       }

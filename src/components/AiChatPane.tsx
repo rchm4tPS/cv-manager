@@ -164,7 +164,6 @@ export function AiChatPane() {
 
       const msg = pendingAiMessage;
       setPendingAiMessage(null);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       handleSend(msg);
     } else {
       lastProcessedMsgRef.current = null;
