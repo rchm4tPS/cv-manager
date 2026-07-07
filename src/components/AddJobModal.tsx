@@ -108,12 +108,11 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
         dateAdded: job ? job.dateAdded : new Date().toISOString(),
         dateApplied: dateApplied ? dateApplied.toISOString() : undefined,
         ...restFormData,
-        source: restFormData.source === "" ? undefined : restFormData.source as any,
-        appliedVia: restFormData.appliedVia === "" ? undefined : restFormData.appliedVia as any,
-        workSetup: restFormData.workSetup === "" ? undefined : restFormData.workSetup as any,
+        source: restFormData.source === "" ? undefined : restFormData.source as JobSource,
+        appliedVia: restFormData.appliedVia === "" ? undefined : restFormData.appliedVia as JobAppliedVia,
+        workSetup: restFormData.workSetup === "" ? undefined : restFormData.workSetup as JobWorkSetup,
       };
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const jobStore = useJobStore.getState();
       if (job) {
         await jobStore.updateJob(job.id, jobToSave);

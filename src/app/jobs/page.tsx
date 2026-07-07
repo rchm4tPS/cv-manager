@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, ExternalLink, Calendar as CalendarIcon, ChevronUp, ChevronDown, TrendingUp, TrendingDown, Briefcase, BarChart3, Search, X, Filter } from "lucide-react";
+import { Pencil, Trash2, ExternalLink, Calendar as CalendarIcon, ChevronUp, TrendingUp, TrendingDown, Briefcase, BarChart3, Search, X, Filter } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -11,19 +11,17 @@ import { format } from "date-fns";
 import { Resume } from "@/types/resume";
 import { AddJobModal } from "@/components/AddJobModal";
 import { Job, JOB_SOURCES, JOB_APPLIED_VIA, JOB_WORK_SETUPS } from "@/types/job";
+import { useJobStore } from "@/store/useJobStore";
 const JOB_STATUSES = ['saved', 'applied', 'interviewed', 'offered', 'rejected'];
 import { cn, formatSalaryString } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { InlineDatePicker, InlineStatusPicker, EditableText, getStatusColor } from "@/components/ui/inline-editors";
-import { useJobStore } from "@/store/useJobStore";
-
+import { InlineDatePicker, InlineStatusPicker, EditableText } from "@/components/ui/inline-editors";
 export default function JobsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { setTailoringJob } = useResumeStore();
 
-  const { jobs, isLoading, fetchJobs, addJob, updateJob, deleteJobs } = useJobStore();
+  const { jobs, fetchJobs, updateJob, deleteJobs, isLoading } = useJobStore();
   const [isMounted, setIsMounted] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
 
@@ -157,7 +155,7 @@ export default function JobsPage() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (job: any) => {
+  const openEditModal = (job: Job) => {
     setEditingJob(job);
     setIsModalOpen(true);
   };
@@ -199,7 +197,7 @@ export default function JobsPage() {
     setSelectedJobIds(newSet);
   };
 
-  const handleTailor = async (job: any) => {
+  const handleTailor = async (job: Job) => {
     setTailorModalJob(job);
     setLoadingResumes(true);
     try {
@@ -250,7 +248,7 @@ export default function JobsPage() {
     }
   };
 
-  const handleInlineEdit = async (jobId: string, field: string, value: any) => {
+  const handleInlineEdit = async (jobId: string, field: string, value: string | undefined) => {
     const success = await updateJob(jobId, { [field]: value });
     if (success) {
       toast({ title: "Updated", description: "Job updated successfully." });
@@ -259,26 +257,6 @@ export default function JobsPage() {
     }
   };
 
-  const handleAddJob = async (jobData: any) => {
-    const newJob = await addJob(jobData);
-    if (newJob) {
-      setIsModalOpen(false);
-      toast({ title: "Success", description: "Job saved successfully." });
-    } else {
-      toast({ title: "Error", description: "Failed to save job.", variant: "destructive" });
-    }
-  };
-
-  const handleUpdateJob = async (id: string, jobData: any) => {
-    const success = await updateJob(id, jobData);
-    if (success) {
-      setIsModalOpen(false);
-      setEditingJob(null);
-      toast({ title: "Success", description: "Job updated successfully." });
-    } else {
-      toast({ title: "Error", description: "Failed to update job.", variant: "destructive" });
-    }
-  };
 
   const toggleExpand = (jobId: string) => {
     const newExpanded = new Set(expandedJobs);

@@ -25,7 +25,7 @@ test.describe('Jobs Store E2E Tests', () => {
 
     const { data } = await supabase.from('jobs').insert(jobsToInsert).select();
     if (data) {
-      seededJobIds = data.map((j: any) => j.id);
+      seededJobIds = data.map((j: { id: string }) => j.id);
     }
   });
 

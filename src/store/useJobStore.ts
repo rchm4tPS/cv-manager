@@ -38,7 +38,7 @@ export const useJobStore = create<JobStore>((set, get) => ({
 
   addJob: async (jobData) => {
     try {
-      // @ts-ignore - The database generates the ID, so we pass an object without it
+      // @ts-expect-error - The database generates the ID, so we pass an object without it
       const newJob = await supabaseApi.saveJob(jobData);
       if (newJob) {
         set((state) => ({ jobs: [newJob, ...state.jobs] }));

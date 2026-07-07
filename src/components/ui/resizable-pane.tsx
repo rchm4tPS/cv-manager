@@ -24,6 +24,7 @@ export const ResizablePane: React.FC<ResizablePaneProps> = ({
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
     const savedWidth = localStorage.getItem(id);
     if (savedWidth) {

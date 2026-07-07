@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { Resume } from '@/types/resume';
+import { Job } from '@/types/job';
 
 export const supabaseApi = {
   // --- Resumes ---
@@ -133,8 +134,8 @@ export const supabaseApi = {
     };
   },
 
-  async updateJob(id: string, updates: any) {
-    const dbUpdates: any = {};
+  async updateJob(id: string, updates: Partial<Job>) {
+    const dbUpdates: Record<string, unknown> = {};
     if (updates.company !== undefined) dbUpdates.company = updates.company;
     if (updates.position !== undefined) dbUpdates.position = updates.position;
     if (updates.location !== undefined) dbUpdates.location = updates.location;
