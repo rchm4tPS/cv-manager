@@ -543,7 +543,7 @@ function WorkExperienceForm() {
       </Button>
 
       {expSection.items.map((item) => (
-        <div key={item.id} className="border rounded-md p-6 bg-muted/5 shadow-sm space-y-4 mt-6">
+        <div key={item.id} className="border rounded-md p-6 bg-slate-50/50 shadow-sm space-y-4 mt-6">
           <div className="flex justify-between items-center">
             <label className="text-xs font-semibold text-muted-foreground">Company</label>
             <div className="flex gap-1">
@@ -750,7 +750,7 @@ function ProjectExperienceForm() {
       </Button>
 
       {projSection.items.map((item) => (
-        <div key={item.id} className="border rounded-md p-6 bg-muted/5 shadow-sm space-y-4 mt-6">
+        <div key={item.id} className="border rounded-md p-6 bg-slate-50/50 shadow-sm space-y-4 mt-6">
           <div className="flex justify-between items-center">
             <label className="text-xs font-semibold text-muted-foreground">Project Name / Title</label>
             <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => deleteItem(item.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
@@ -894,7 +894,7 @@ function EducationForm() {
       </Button>
 
       {eduSection.items.map((item) => (
-        <div key={item.id} className="border rounded-md p-6 bg-muted/5 shadow-sm space-y-4 mt-6 relative">
+        <div key={item.id} className="border rounded-md p-6 bg-slate-50/50 shadow-sm space-y-4 mt-6 relative">
           <Button variant="ghost" size="icon" className="absolute top-4 right-4 w-6 h-6" onClick={() => deleteItem(item.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
           
           <div className="grid grid-cols-1 @md:grid-cols-2 gap-4">
@@ -1155,7 +1155,7 @@ function CustomSectionForm({ sectionId }: { sectionId: string }) {
             + Add Item
           </Button>
           {section.items.map((item) => (
-            <div key={item.id} className="border rounded-md p-6 bg-muted/5 shadow-sm space-y-4 mt-6">
+            <div key={item.id} className="border rounded-md p-6 bg-slate-50/50 shadow-sm space-y-4 mt-6">
               <div className="flex justify-between items-center">
             <label className="text-xs font-semibold text-muted-foreground">Item Name (e.g. Certificate Name)</label>
             <div className="flex gap-1">

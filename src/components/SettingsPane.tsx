@@ -161,7 +161,7 @@ export function SettingsPane() {
 
         {/* Document Layout Box */}
         <div className="border rounded-md bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground bg-muted/10 border-b border-slate-100">
+          <div className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground bg-muted/80 border-b border-slate-100">
             Document Layout
           </div>
           <div className="p-4 space-y-4">
@@ -215,7 +215,7 @@ export function SettingsPane() {
 
         {/* Spacing & Margins Box */}
         <div className="border rounded-md bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground bg-muted/10 border-b border-slate-100">
+          <div className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground bg-muted/80 border-b border-slate-100">
             Spacing & Margins
           </div>
           <div className="p-4 space-y-4">
@@ -314,7 +314,7 @@ export function SettingsPane() {
 
         {/* Typography Box */}
         <div className="border rounded-md bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground bg-muted/10 border-b border-slate-100">
+          <div className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground bg-muted/80 border-b border-slate-100">
             Typography
           </div>
           <div className="p-4 space-y-4">

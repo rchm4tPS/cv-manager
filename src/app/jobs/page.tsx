@@ -617,7 +617,7 @@ export default function JobsPage() {
                         <InlineDatePicker 
                           date={filterDateFrom} 
                           onSelect={setFilterDateFrom} 
-                          className="w-full border-input border h-9 font-normal hover:bg-muted/50" 
+                          className="w-full border-input border h-9 font-normal bg-white hover:bg-muted/50" 
                           placeholder="Pick date"
                         />
                       </div>
@@ -628,7 +628,7 @@ export default function JobsPage() {
                         <InlineDatePicker 
                           date={filterDateTo} 
                           onSelect={setFilterDateTo} 
-                          className="w-full border-input border h-9 font-normal hover:bg-muted/50" 
+                          className="w-full border-input border h-9 font-normal bg-white hover:bg-muted/50" 
                           placeholder="Pick date"
                         />
                       </div>
@@ -638,7 +638,7 @@ export default function JobsPage() {
 
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-muted-foreground uppercase">Job Source</label>
-                  <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="w-full text-sm border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 bg-background">
+                  <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="w-full text-sm border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 bg-white">
                     <option value="">Any Source</option>
                     {JOB_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -646,7 +646,7 @@ export default function JobsPage() {
 
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-muted-foreground uppercase">Applied Via</label>
-                  <select value={filterAppliedVia} onChange={e => setFilterAppliedVia(e.target.value)} className="w-full text-sm border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 bg-background">
+                  <select value={filterAppliedVia} onChange={e => setFilterAppliedVia(e.target.value)} className="w-full text-sm border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 bg-white">
                     <option value="">Any Application Method</option>
                     {JOB_APPLIED_VIA.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -654,7 +654,7 @@ export default function JobsPage() {
 
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-muted-foreground uppercase">Work Setup</label>
-                  <select value={filterWorkSetup} onChange={e => setFilterWorkSetup(e.target.value)} className="w-full text-sm border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 bg-background">
+                  <select value={filterWorkSetup} onChange={e => setFilterWorkSetup(e.target.value)} className="w-full text-sm border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 bg-white">
                     <option value="">Any Setup</option>
                     {JOB_WORK_SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -667,7 +667,7 @@ export default function JobsPage() {
         {loading ? (
           <div className="py-20 text-center text-muted-foreground">Loading jobs...</div>
         ) : (
-          <div className="border rounded-md bg-background shadow-sm overflow-x-auto w-full">
+          <div className="border rounded-md bg-white shadow-sm overflow-x-auto w-full">
             <table className="w-full text-sm text-left">
               <thead className="text-xs uppercase bg-muted/50 text-muted-foreground border-b whitespace-nowrap">
                 <tr>

@@ -204,7 +204,7 @@ export function AnalysisPane() {
             Get an ATS score and actionable AI feedback to improve your CV instantly.
           </p>
           <Button 
-            className="w-full py-6 rounded-xl text-md" 
+            className="w-full h-auto py-4 rounded-xl text-md whitespace-normal" 
             onClick={runAnalysis} 
             disabled={analyzeDisabled}
           >
@@ -497,7 +497,7 @@ export function AnalysisPane() {
 
       <div className="pt-4 border-t border-b pb-4">
         <Button 
-          className="w-full py-6 rounded-xl text-md" 
+          className="w-full h-auto py-4 rounded-xl text-md whitespace-normal" 
           onClick={runAnalysis} 
           disabled={analyzeDisabled}
         >
