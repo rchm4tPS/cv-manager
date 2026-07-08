@@ -52,7 +52,7 @@ export default function JobsPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
-    fetchJobs();
+    fetchJobs(true);
   }, [fetchJobs]);
 
   // Dashboard Metrics Calculation
@@ -222,7 +222,7 @@ export default function JobsPage() {
       const duplicate: Resume = {
         ...original,
         id: 'new',
-        title: `${original.title || 'Untitled'} - Tailored for ${tailorModalJob.company}`,
+        title: `${tailorModalJob.position} ${new Date().getFullYear()} - ${tailorModalJob.company}`,
         analysisResult: undefined, // Wipe out generic analysis!
         acceptedSuggestions: undefined,
         rejectedSuggestions: undefined,

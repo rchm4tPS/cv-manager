@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TailorJobModal } from "./TailorJobModal";
 import { useRouter } from "next/navigation";
 import { supabaseApi } from "@/lib/supabase-api";
+import { useJobStore } from "@/store/useJobStore";
 
 export function AnalysisPane() {
   const { 
@@ -33,6 +34,17 @@ export function AnalysisPane() {
   const [isTailorModalOpen, setIsTailorModalOpen] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const router = useRouter();
+  
+  const { jobs, fetchJobs } = useJobStore();
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  const currentTailoringJob = tailoringJob ? {
+    ...tailoringJob,
+    ...(jobs.find(j => j.id === tailoringJob.id) || {})
+  } : null;
 
   // Update timer for cooldown every second
   useEffect(() => {
@@ -51,8 +63,8 @@ export function AnalysisPane() {
   const analyzeDisabled = analyzing || isCooldownActive || !hasMinimalData;
 
   const isPerfect = !!(analysisResult && analysisResult.steps.every(s => s.recommendations.length === 0));
-  const isFullyTailored = !!(tailoringJob && isPerfect);
-  const isFullyOptimized = !!(!tailoringJob && isPerfect);
+  const isFullyTailored = !!(currentTailoringJob && isPerfect);
+  const isFullyOptimized = !!(!currentTailoringJob && isPerfect);
   const displayScore = isPerfect && analysisResult ? 100 : (analysisResult?.score || 0);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,7 +75,7 @@ export function AnalysisPane() {
       const duplicatedResume = {
         ...resume,
         id: 'new', // Instructs supabaseApi.saveResume to let DB generate new UUID
-        title: `${resume.title} - ${job.company}`,
+        title: `${job.position} ${new Date().getFullYear()} - ${job.company}`,
         analysisResult: undefined,
         acceptedSuggestions: undefined,
         rejectedSuggestions: undefined,
@@ -103,7 +115,7 @@ export function AnalysisPane() {
       const res = await fetch('/api/analyze-cv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume, tailoringJob })
+        body: JSON.stringify({ resume, tailoringJob: currentTailoringJob })
       });
       const data = await res.json();
       if (data.success) {
@@ -183,9 +195,9 @@ export function AnalysisPane() {
     }
   };
 
-  const TailoringBanner = tailoringJob ? (
+  const TailoringBanner = currentTailoringJob ? (
     <div className="bg-blue-50 text-blue-700 text-xs px-3 py-1.5 rounded-full inline-flex font-medium mb-4 border border-blue-100 flex items-center justify-center shrink-0 mx-auto max-w-fit">
-      ✨ Tailoring for {tailoringJob.position}
+      ✨ Tailoring for {currentTailoringJob.position} at {currentTailoringJob.company}
     </div>
   ) : null;
 
@@ -217,7 +229,7 @@ export function AnalysisPane() {
                   ? "Review inline suggestions first" 
                   : isCooldownActive 
                     ? `Wait ${cooldownRemaining}s before re-analyzing` 
-                    : (tailoringJob ? "Analyze for this Job" : "Analyze CV")}
+                    : (currentTailoringJob ? "Analyze for this Job" : "Analyze CV")}
           </Button>
         </div>
       </aside>
@@ -510,7 +522,7 @@ export function AnalysisPane() {
                 ? "Review inline suggestions first" 
                 : isCooldownActive 
                   ? `Wait ${cooldownRemaining}s before re-analyzing` 
-                  : (tailoringJob ? "Re-Analyze for Job" : "Re-Analyze CV")}
+                  : (currentTailoringJob ? "Re-Analyze for Job" : "Re-Analyze CV")}
         </Button>
       </div>
 
@@ -570,7 +582,7 @@ export function AnalysisPane() {
           </div>
         ))}
 
-        {!resume.tailoringJob && (
+        {!currentTailoringJob && (
           <div 
             onClick={() => setIsTailorModalOpen(true)}
             className="bg-white border rounded-3xl p-4 flex flex-col @md:flex-row items-start @md:items-center justify-between cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group gap-4 min-w-0"

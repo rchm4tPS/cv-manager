@@ -23,7 +23,7 @@ export const useJobStore = create<JobStore>((set, get) => ({
     if (isLoading) return;
     if (hasLoadedInitial && !force) return;
 
-    set({ isLoading: true });
+    if (!hasLoadedInitial) set({ isLoading: true });
     try {
       const data = await supabaseApi.getJobs();
       if (data) {

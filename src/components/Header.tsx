@@ -19,7 +19,8 @@ export function Header() {
     resume, setResume, updateTitle, isDirty, setIsDirty, 
     undo, redo, pastStates, futureStates,
     setTailoringJob,
-    appTheme, setAppTheme
+    appTheme, setAppTheme,
+    syncResumeToList
   } = useResumeStore();
   const isLoadingTitle = params?.id && resume.id !== params.id;
   const { toast } = useToast();
@@ -67,15 +68,23 @@ export function Header() {
       const savedData = await supabaseApi.saveResume(resume);
       
       if (resume.id === 'new' && savedData) {
-        setResume({
+        const newResume = {
           ...resume,
           id: savedData.id,
           createdAt: savedData.created_at,
           updatedAt: savedData.updated_at
-        });
+        };
+        setResume(newResume);
+        syncResumeToList(newResume);
         // Important: Update the URL so we are no longer at /editor/new
         router.replace(`/editor/${savedData.id}`);
-      } else {
+      } else if (savedData) {
+        const updatedResume = {
+          ...resume,
+          updatedAt: savedData.updated_at
+        };
+        setResume(updatedResume);
+        syncResumeToList(updatedResume);
         // Just clear dirty flag if updating existing
         setIsDirty(false);
       }

@@ -61,6 +61,7 @@ interface ResumeStore {
   hasLoadedList: boolean;
   fetchResumeList: (force?: boolean) => Promise<void>;
   deleteResumeFromList: (id: string) => Promise<boolean>;
+  syncResumeToList: (resume: Resume) => void;
 }
 
 const blankResume: Resume = {
@@ -547,7 +548,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
     if (isListLoading) return;
     if (hasLoadedList && !force) return;
 
-    set({ isListLoading: true });
+    if (!hasLoadedList) set({ isListLoading: true });
     try {
       const data = await supabaseApi.getResumes();
       if (data) {
@@ -575,6 +576,15 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       set({ resumeList: previousList });
       return false;
     }
-  }
+  },
+  syncResumeToList: (resume) => set((state) => {
+    const list = state.resumeList;
+    const exists = list.some(r => r.id === resume.id);
+    if (exists) {
+      return { resumeList: list.map(r => r.id === resume.id ? resume : r) };
+    } else {
+      return { resumeList: [resume, ...list] };
+    }
+  })
 };
 });

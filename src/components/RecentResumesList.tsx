@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Clock, LayoutGrid, List, Sparkles, FileText, Trash2, Loader2 } from "lucide-react";
 import { Resume } from "@/types/resume";
+import { useJobStore } from "@/store/useJobStore";
 
 interface RecentResumesListProps {
   recentResumes: Resume[];
@@ -17,12 +18,15 @@ export const RecentResumesList: React.FC<RecentResumesListProps> = ({
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'master' | 'tailored'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  
+  const { jobs, fetchJobs } = useJobStore();
 
   useEffect(() => {
+    fetchJobs();
     const stored = localStorage.getItem('resumeViewMode');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored === 'table' || stored === 'grid') setViewMode(stored);
-  }, []);
+  }, [fetchJobs]);
 
   const handleViewModeChange = (mode: 'grid' | 'table') => {
     setViewMode(mode);
@@ -129,9 +133,16 @@ export const RecentResumesList: React.FC<RecentResumesListProps> = ({
                   {resume.title || "Untitled Resume"}
                 </h3>
                 {resume.tailoringJob && (
-                  <p className="text-xs text-emerald-600 font-medium truncate mb-0.5">
-                    {resume.tailoringJob.position} at {resume.tailoringJob.company}
-                  </p>
+                  (() => {
+                    const liveJob = jobs.find(j => j.id === resume.tailoringJob?.id);
+                    const position = liveJob?.position || resume.tailoringJob.position;
+                    const company = liveJob?.company || resume.tailoringJob.company;
+                    return (
+                      <p className="text-xs text-emerald-600 font-medium truncate mb-0.5">
+                        {position} at {company}
+                      </p>
+                    );
+                  })()
                 )}
                 <p className="text-[10px] text-slate-400 mt-auto pt-2">
                   Updated {new Date(resume.updatedAt).toLocaleDateString()}
@@ -179,7 +190,12 @@ export const RecentResumesList: React.FC<RecentResumesListProps> = ({
                         )}
                       </td>
                       <td className="px-6 py-4 text-emerald-600 font-medium whitespace-nowrap">
-                        {resume.tailoringJob ? `${resume.tailoringJob.position} at ${resume.tailoringJob.company}` : '-'}
+                        {resume.tailoringJob ? (() => {
+                          const liveJob = jobs.find(j => j.id === resume.tailoringJob?.id);
+                          const position = liveJob?.position || resume.tailoringJob.position;
+                          const company = liveJob?.company || resume.tailoringJob.company;
+                          return `${position} at ${company}`;
+                        })() : '-'}
                       </td>
                       <td className="px-6 py-4 text-slate-500 whitespace-nowrap">
                         {new Date(resume.updatedAt).toLocaleDateString()}

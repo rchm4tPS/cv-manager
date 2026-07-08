@@ -144,10 +144,10 @@ export const supabaseApi = {
     if (updates.dateAdded !== undefined) dbUpdates.date_added = updates.dateAdded;
     if (updates.dateApplied !== undefined) dbUpdates.date_applied = updates.dateApplied;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.source !== undefined) dbUpdates.source = updates.source;
-    if (updates.appliedVia !== undefined) dbUpdates.applied_via = updates.appliedVia;
+    if (updates.source !== undefined) dbUpdates.source = (updates.source as string) === "" ? null : updates.source;
+    if (updates.appliedVia !== undefined) dbUpdates.applied_via = (updates.appliedVia as string) === "" ? null : updates.appliedVia;
     if (updates.salaryRange !== undefined) dbUpdates.salary_range = updates.salaryRange;
-    if (updates.workSetup !== undefined) dbUpdates.work_setup = updates.workSetup;
+    if (updates.workSetup !== undefined) dbUpdates.work_setup = (updates.workSetup as string) === "" ? null : updates.workSetup;
 
     const { data, error } = await supabase
       .from('jobs')

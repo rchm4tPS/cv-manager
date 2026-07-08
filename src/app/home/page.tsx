@@ -22,7 +22,7 @@ export default function HomePage() {
   const [isUploadOverlayOpen, setIsUploadOverlayOpen] = useState(false);
 
   useEffect(() => {
-    fetchResumeList();
+    fetchResumeList(true);
   }, [fetchResumeList]);
 
   const handleCreateNew = () => {
