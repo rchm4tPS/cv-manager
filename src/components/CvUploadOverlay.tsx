@@ -6,6 +6,28 @@ import { Upload, X, FileText, Loader2, Sparkles, CheckCircle2 } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Resume, Section, ResumeItem } from '@/types/resume';
 
+const AutoResizeTextarea = ({ value, onChange, className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      className={className}
+      rows={1}
+      {...props}
+    />
+  );
+};
+
 interface CvUploadOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -109,6 +131,49 @@ export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverl
       setIsProcessing(false);
       setStep(2); // Go back to raw text step so they can retry
     }
+  };
+
+  const updatePersonalInfo = (field: keyof NonNullable<Resume['personalInfo']>, value: string) => {
+    setParsedData(prev => prev ? {
+      ...prev,
+      personalInfo: {
+        ...(prev.personalInfo || {} as any),
+        [field]: value
+      }
+    } : null);
+  };
+
+  const updateSectionTitle = (sectionIndex: number, title: string) => {
+    setParsedData(prev => {
+      if (!prev || !prev.sections) return prev;
+      const newSections = [...prev.sections];
+      newSections[sectionIndex] = { ...newSections[sectionIndex], title };
+      return { ...prev, sections: newSections };
+    });
+  };
+
+  const updateItemField = (sectionIndex: number, itemIndex: number, field: keyof ResumeItem, value: string) => {
+    setParsedData(prev => {
+      if (!prev || !prev.sections) return prev;
+      const newSections = [...prev.sections];
+      const newItems = [...(newSections[sectionIndex].items || [])];
+      newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
+      newSections[sectionIndex] = { ...newSections[sectionIndex], items: newItems };
+      return { ...prev, sections: newSections };
+    });
+  };
+
+  const updateItemDescription = (sectionIndex: number, itemIndex: number, descIndex: number, value: string) => {
+    setParsedData(prev => {
+      if (!prev || !prev.sections) return prev;
+      const newSections = [...prev.sections];
+      const newItems = [...(newSections[sectionIndex].items || [])];
+      const newDesc = [...(newItems[itemIndex].description || [])];
+      newDesc[descIndex] = value;
+      newItems[itemIndex] = { ...newItems[itemIndex], description: newDesc };
+      newSections[sectionIndex] = { ...newSections[sectionIndex], items: newItems };
+      return { ...prev, sections: newSections };
+    });
   };
 
   return (
@@ -216,74 +281,91 @@ export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverl
             {/* Step 4: Review Data */}
             {step === 4 && parsedData && (
               <div className="flex flex-col h-full">
-                <div className="flex items-center gap-2 mb-4 text-slate-700">
+                <div className="flex items-center gap-2 mb-2 text-slate-700">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                   <h3 className="font-semibold">AI Extraction Complete</h3>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto pr-2 space-y-6 max-h-[400px]">
+                <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm px-4 py-2.5 rounded-lg mb-4 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 shrink-0" />
+                  <span><strong>Tip:</strong> Click any text below to edit the AI&apos;s extraction before generating your CV.</span>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto pr-2 pb-4 space-y-6 max-h-[400px]">
                   {/* Personal Info */}
                   <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                     <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 border-b pb-2">Personal Info</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-slate-500 block mb-1">Name</span>
-                        <span className="font-medium text-slate-800">{parsedData.personalInfo?.name || '-'}</span>
+                        <input className="w-full text-slate-800 font-medium bg-transparent border-b border-slate-200 focus:border-blue-500 focus:outline-none py-1" value={parsedData.personalInfo?.name || ''} onChange={(e) => updatePersonalInfo('name', e.target.value)} placeholder="Name" />
                       </div>
                       <div>
                         <span className="text-slate-500 block mb-1">Job Title</span>
-                        <span className="font-medium text-slate-800">{parsedData.personalInfo?.jobTitle || '-'}</span>
+                        <input className="w-full text-slate-800 font-medium bg-transparent border-b border-slate-200 focus:border-blue-500 focus:outline-none py-1" value={parsedData.personalInfo?.jobTitle || ''} onChange={(e) => updatePersonalInfo('jobTitle', e.target.value)} placeholder="Job Title" />
                       </div>
                       <div>
                         <span className="text-slate-500 block mb-1">Email</span>
-                        <span className="font-medium text-slate-800">{parsedData.personalInfo?.email || '-'}</span>
+                        <input className="w-full text-slate-800 font-medium bg-transparent border-b border-slate-200 focus:border-blue-500 focus:outline-none py-1" value={parsedData.personalInfo?.email || ''} onChange={(e) => updatePersonalInfo('email', e.target.value)} placeholder="Email" />
                       </div>
                       <div>
                         <span className="text-slate-500 block mb-1">Phone</span>
-                        <span className="font-medium text-slate-800">{parsedData.personalInfo?.phone || '-'}</span>
+                        <input className="w-full text-slate-800 font-medium bg-transparent border-b border-slate-200 focus:border-blue-500 focus:outline-none py-1" value={parsedData.personalInfo?.phone || ''} onChange={(e) => updatePersonalInfo('phone', e.target.value)} placeholder="Phone" />
                       </div>
                       <div>
                         <span className="text-slate-500 block mb-1">Location</span>
-                        <span className="font-medium text-slate-800">{parsedData.personalInfo?.location || '-'}</span>
+                        <input className="w-full text-slate-800 font-medium bg-transparent border-b border-slate-200 focus:border-blue-500 focus:outline-none py-1" value={parsedData.personalInfo?.location || ''} onChange={(e) => updatePersonalInfo('location', e.target.value)} placeholder="Location" />
                       </div>
                       <div>
                         <span className="text-slate-500 block mb-1">LinkedIn</span>
-                        <span className="font-medium text-slate-800 break-all">{parsedData.personalInfo?.linkedin || '-'}</span>
+                        <input className="w-full text-slate-800 font-medium bg-transparent border-b border-slate-200 focus:border-blue-500 focus:outline-none py-1" value={parsedData.personalInfo?.linkedin || ''} onChange={(e) => updatePersonalInfo('linkedin', e.target.value)} placeholder="LinkedIn URL" />
                       </div>
                       <div>
                         <span className="text-slate-500 block mb-1">Website</span>
-                        <span className="font-medium text-slate-800 break-all">{parsedData.personalInfo?.website || '-'}</span>
+                        <input className="w-full text-slate-800 font-medium bg-transparent border-b border-slate-200 focus:border-blue-500 focus:outline-none py-1" value={parsedData.personalInfo?.website || ''} onChange={(e) => updatePersonalInfo('website', e.target.value)} placeholder="Website URL" />
                       </div>
                       <div>
                         <span className="text-slate-500 block mb-1">GitHub</span>
-                        <span className="font-medium text-slate-800 break-all">{parsedData.personalInfo?.github || '-'}</span>
+                        <input className="w-full text-slate-800 font-medium bg-transparent border-b border-slate-200 focus:border-blue-500 focus:outline-none py-1" value={parsedData.personalInfo?.github || ''} onChange={(e) => updatePersonalInfo('github', e.target.value)} placeholder="GitHub URL" />
                       </div>
                     </div>
                   </div>
 
                   {/* Sections */}
-                  {parsedData.sections?.map((section: Section) => (
+                  {parsedData.sections?.map((section: Section, sectionIndex: number) => (
                     <div key={section.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                      <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 border-b pb-2 flex justify-between items-center">
-                        {section.title}
-                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full capitalize">{section.type}</span>
+                      <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 border-b pb-2 flex justify-between items-start gap-4">
+                        <AutoResizeTextarea className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:text-slate-700 w-full max-w-[300px] resize-none overflow-hidden" value={section.title} onChange={(e) => updateSectionTitle(sectionIndex, e.target.value)} />
+                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full capitalize shrink-0 mt-0.5">{section.type}</span>
                       </h4>
                       <div className="space-y-4">
-                        {section.items?.map((item: ResumeItem) => (
-                          <div key={item.id} className="text-sm">
-                            <div className="font-semibold text-slate-800">{item.title}</div>
-                            {item.subtitle && <div className="text-slate-600">{item.subtitle}</div>}
-                            {(item.startDate || item.endDate) && (
-                              <div className="text-xs text-slate-400 mt-0.5">
-                                {item.startDate || '?'} - {item.endDate || '?'}
-                              </div>
-                            )}
+                        {section.items?.map((item: ResumeItem, itemIndex: number) => (
+                          <div key={item.id} className="text-sm border-l-2 border-slate-100 pl-3">
+                            <input className="font-semibold text-slate-800 bg-transparent w-full focus:outline-none border-b border-transparent hover:border-slate-200 focus:border-blue-500 py-0.5" value={item.title} onChange={(e) => updateItemField(sectionIndex, itemIndex, 'title', e.target.value)} placeholder="Title" />
+                            <input className="text-slate-600 bg-transparent w-full focus:outline-none border-b border-transparent hover:border-slate-200 focus:border-blue-500 py-0.5" value={item.subtitle || ''} onChange={(e) => updateItemField(sectionIndex, itemIndex, 'subtitle', e.target.value)} placeholder="Subtitle" />
+                            
+                            <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                              <input className="bg-transparent w-24 focus:outline-none border-b border-transparent hover:border-slate-200 focus:border-blue-500 py-0.5" value={item.startDate || ''} onChange={(e) => updateItemField(sectionIndex, itemIndex, 'startDate', e.target.value)} placeholder="Start Date" />
+                              <span>-</span>
+                              <input className="bg-transparent w-24 focus:outline-none border-b border-transparent hover:border-slate-200 focus:border-blue-500 py-0.5" value={item.endDate || ''} onChange={(e) => updateItemField(sectionIndex, itemIndex, 'endDate', e.target.value)} placeholder="End Date" />
+                            </div>
                             {item.description && item.description.length > 0 && (
-                              <ul className="list-disc pl-4 mt-2 text-slate-600 space-y-1">
-                                {item.description.map((desc: string, i: number) => (
-                                  <li key={i}>{desc}</li>
-                                ))}
-                              </ul>
+                              section.type === 'summary' ? (
+                                <div className="mt-2 text-slate-600 space-y-2">
+                                  {item.description.map((desc: string, descIndex: number) => (
+                                    <AutoResizeTextarea key={descIndex} className="w-full bg-transparent resize-none focus:outline-none border-b border-transparent hover:border-slate-200 focus:border-blue-500 py-0.5 overflow-hidden" value={desc} onChange={(e) => updateItemDescription(sectionIndex, itemIndex, descIndex, e.target.value)} />
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="mt-2 text-slate-600 space-y-2">
+                                  {item.description.map((desc: string, descIndex: number) => (
+                                    <div key={descIndex} className="flex gap-3 items-start">
+                                      <div className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></div>
+                                      <AutoResizeTextarea className="w-full bg-transparent resize-none focus:outline-none border-b border-transparent hover:border-slate-200 focus:border-blue-500 py-0.5 overflow-hidden" value={desc} onChange={(e) => updateItemDescription(sectionIndex, itemIndex, descIndex, e.target.value)} />
+                                    </div>
+                                  ))}
+                                </div>
+                              )
                             )}
                           </div>
                         ))}
