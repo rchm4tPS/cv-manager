@@ -18,8 +18,8 @@ CREATE POLICY "Allow all actions for MVP on resumes" ON resumes FOR ALL USING (t
 
 
 -- Enums for new job columns
-CREATE TYPE job_source_enum AS ENUM ('relasi/teman', 'keluarga', 'dosen', 'linked in', 'grup WA', 'website perusahaan', 'glints', 'jobstreet', 'indeed', 'mendapat sendiri di dunia nyata');
-CREATE TYPE job_applied_via_enum AS ENUM ('email', 'website perusahaan', 'google form', 'glints', 'jobstreet', 'linked in easy apply', 'indeed', 'ordal', 'dikirim ke tempat');
+CREATE TYPE job_source_enum AS ENUM ('relasi/teman', 'keluarga', 'dosen', 'linked in', 'grup WA', 'website perusahaan', 'glints', 'jobstreet', 'indeed', 'mendapat sendiri di dunia nyata', 'instagram', 'twitter', 'Threads by Instagram', 'facebook', 'referral', 'dealls');
+CREATE TYPE job_applied_via_enum AS ENUM ('email', 'website perusahaan', 'google form', 'glints', 'jobstreet', 'linked in easy apply', 'indeed', 'ordal', 'dikirim ke tempat', 'dealls');
 CREATE TYPE job_work_setup_enum AS ENUM ('WFO', 'WFH', 'Hybrid');
 
 -- 2. Jobs Table (Job Tracker)

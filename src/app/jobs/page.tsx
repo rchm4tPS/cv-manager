@@ -593,16 +593,7 @@ export default function JobsPage() {
                             onChange={(e) => handleInlineEdit(job.id, 'source', e.target.value)}
                           >
                             <option value="">-</option>
-                            <option value="relasi/teman">Relasi / Teman</option>
-                            <option value="keluarga">Keluarga</option>
-                            <option value="dosen">Dosen</option>
-                            <option value="linked in">LinkedIn</option>
-                            <option value="grup WA">Grup WA</option>
-                            <option value="website perusahaan">Web Perusahaan</option>
-                            <option value="glints">Glints</option>
-                            <option value="jobstreet">Jobstreet</option>
-                            <option value="indeed">Indeed</option>
-                            <option value="mendapat sendiri di dunia nyata">Dunia Nyata</option>
+                            {JOB_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </td>
                         <td className="px-4 py-2">
@@ -612,15 +603,7 @@ export default function JobsPage() {
                             onChange={(e) => handleInlineEdit(job.id, 'appliedVia', e.target.value)}
                           >
                             <option value="">-</option>
-                            <option value="email">Email</option>
-                            <option value="website perusahaan">Web Perusahaan</option>
-                            <option value="google form">Google Form</option>
-                            <option value="glints">Glints</option>
-                            <option value="jobstreet">Jobstreet</option>
-                            <option value="linked in easy apply">LI Easy Apply</option>
-                            <option value="indeed">Indeed</option>
-                            <option value="ordal">Ordal</option>
-                            <option value="dikirim ke tempat">Dikirim Tempat</option>
+                            {JOB_APPLIED_VIA.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </td>
                         <td className="px-4 py-2">
@@ -637,9 +620,7 @@ export default function JobsPage() {
                             onChange={(e) => handleInlineEdit(job.id, 'workSetup', e.target.value)}
                           >
                             <option value="">-</option>
-                            <option value="WFO">WFO</option>
-                            <option value="WFH">WFH</option>
-                            <option value="Hybrid">Hybrid</option>
+                            {JOB_WORK_SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </td>
                         <td className="px-6 py-4 text-right flex justify-end gap-2 items-center transition-colors">
