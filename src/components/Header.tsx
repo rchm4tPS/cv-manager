@@ -8,7 +8,8 @@ import { supabaseApi } from "@/lib/supabase-api";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Undo2, Redo2, Menu, FileText, Briefcase, Download, X, Home, Palette } from "lucide-react";
+import { Undo2, Redo2, Menu, FileText, Briefcase, Download, X, Home, Palette, LogOut, User } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export function Header() {
   const router = useRouter();
@@ -29,11 +30,13 @@ export function Header() {
   const [tempTitle, setTempTitle] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const { user, signOut, initializeAuth } = useAuthStore();
 
   useEffect(() => {
     // eslint-disable-next-line
     setIsMounted(true);
-  }, []);
+    initializeAuth();
+  }, [initializeAuth]);
 
   const handleTitleSubmit = () => {
     if (tempTitle.trim()) {
@@ -235,6 +238,48 @@ export function Header() {
                 Theme: {appTheme === 'default' ? 'Slate Blue' : 'Anthropic'}
               </Button>
             </div>
+            
+            {user && (
+              <div className="p-4 border-t bg-slate-50 flex flex-col gap-2">
+                <div className="flex items-center gap-3 px-2 py-1 mb-2">
+                  <div className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold overflow-hidden">
+                    {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                      <img 
+                        src={user.user_metadata.avatar_url || user.user_metadata.picture} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <User className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {(user.user_metadata?.name || user.user_metadata?.full_name) && (
+                      <p className="text-sm font-semibold text-slate-900 truncate">
+                        {user.user_metadata.name || user.user_metadata.full_name}
+                      </p>
+                    )}
+                    <p className="text-xs text-slate-500 truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={async () => {
+                    await signOut();
+                    setIsMenuOpen(false);
+                    router.push('/login');
+                    router.refresh(); // Force a server-side refresh to ensure middleware runs correctly
+                  }}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
+            )}
 
             {isEditor && (
               <div className="p-4 border-t bg-slate-50">
