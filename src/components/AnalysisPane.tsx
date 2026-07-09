@@ -543,7 +543,15 @@ export function AnalysisPane() {
       </div>
 
       <div className="space-y-4 pb-4">
-        {analysisResult.steps.map((step, i) => (
+        {analysisResult.steps.map((step, i) => {
+          const stepSuggestions = editorSuggestions.filter(s => s.stepId === step.id);
+          const totalCount = stepSuggestions.length;
+          const pendingCount = stepSuggestions.filter(s => s.status === 'pending').length;
+          const acceptedCount = stepSuggestions.filter(s => s.status === 'accepted').length;
+          const rejectedCount = stepSuggestions.filter(s => s.status === 'rejected').length;
+          const isFullyResolved = totalCount > 0 && pendingCount === 0;
+
+          return (
           <div 
             key={step.id}
             onClick={() => {
@@ -557,24 +565,34 @@ export function AnalysisPane() {
                 <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-sm shrink-0">
                   {i + 1}
                 </div>
-                {/* <div className={`w-12 h-12 rounded-2xl ${getStepIconBg(step.id)} hidden md:flex items-center justify-center shrink-0`}>
-                  {getStepIcon(step.id)}
-                </div> */}
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 ml-[-6px] mb-1.5">
-                  {/* <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
-                    Step {i + 1}
-                  </span> */}
-                  
                   {step.recommendations.length === 0 ? (
                     <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
                       Looks good
                     </span>
+                  ) : isFullyResolved ? (
+                    rejectedCount === totalCount ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap flex items-center gap-1">
+                        <X className="w-3 h-3" />
+                        Recommendations Dismissed
+                      </span>
+                    ) : acceptedCount === totalCount ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Recommendations Accepted
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Recommendations Partially Addressed
+                      </span>
+                    )
                   ) : (
                     <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
-                      {step.recommendations.length} recommended improvements
+                      {pendingCount} recommended {pendingCount === 1 ? 'improvement' : 'improvements'}
                     </span>
                   )}
                 </div>
@@ -589,7 +607,8 @@ export function AnalysisPane() {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {!currentTailoringJob && (
           <div 

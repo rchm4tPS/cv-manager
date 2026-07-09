@@ -10,6 +10,22 @@ import { Button } from "@/components/ui/button";
 import { Bold, Italic, Underline, GripVertical, Trash2, Check, Sparkles, X } from "lucide-react";
 import { Rulers } from "./Ruler";
 import { useToast } from "@/hooks/use-toast";
+import { diffWords } from "diff";
+
+const generateWordDiffHtml = (oldStr: string, newStr: string) => {
+   const diff = diffWords(oldStr || "", newStr || "");
+   let html = '';
+   diff.forEach(part => {
+      if (part.added) {
+         html += `<span class="bg-green-100/50 text-green-900 outline outline-1 outline-green-400 mx-0.5 px-0.5 rounded-sm">${part.value}</span>`;
+      } else if (part.removed) {
+         html += `<span class="bg-red-100/50 text-red-900 line-through mr-1 px-0.5 rounded-sm">${part.value}</span>`;
+      } else {
+         html += part.value;
+      }
+   });
+   return html;
+};
 
 function FloatingToolbar() {
   const [toolbarPos, setToolbarPos] = useState<{ x: number, y: number } | null>(null);
@@ -941,12 +957,12 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                             
                             return (
                               <React.Fragment key={i}>
-                                {isChanged && hasOld && hasNew && (
-                                  <li className="text-red-900 bg-red-100/50 line-through">
-                                    <span dangerouslySetInnerHTML={{ __html: oldD }} />
+                                {(isChanged && hasOld && hasNew) ? (
+                                  <li className={`relative group/diff outline outline-1 outline-amber-400 rounded-sm ${editableListClass}`}>
+                                    <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />
+                                    <span className="block" contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleDescBlur(section.id, item.id, i, e)} dangerouslySetInnerHTML={{ __html: isEditable ? newD : generateWordDiffHtml(oldD as string, newD as string) }} />
                                   </li>
-                                )}
-                                {hasNew ? (
+                                ) : hasNew ? (
                                   <li className={`relative group/diff ${isChanged ? 'bg-green-100/50 outline outline-1 outline-green-400 rounded-sm' : ''} ${editableListClass}`}>
                                     {isChanged && <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />}
                                     <span className="block" contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleDescBlur(section.id, item.id, i, e)} dangerouslySetInnerHTML={{ __html: newD }} />
