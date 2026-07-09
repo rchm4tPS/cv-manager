@@ -14,6 +14,7 @@ export interface Resume {
   };
   acceptedSuggestions?: string[];
   rejectedSuggestions?: string[];
+  partiallyAcceptedSuggestions?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -90,7 +91,7 @@ export interface AnalysisRecommendation {
   whatToImprove: string;
   whyAndHowToFix: string;
   suggestionId?: string;
-  status?: 'pending' | 'accepted' | 'rejected';
+  status?: 'pending' | 'accepted' | 'rejected' | 'partially_accepted';
   targetSection?: string;
 }
 
@@ -98,7 +99,7 @@ export interface EditorSuggestion extends AnalysisRecommendation {
   id: string;
   stepId: string;
   targetSection: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'partially_accepted';
 }
 
 export interface AnalysisStep {
@@ -120,7 +121,7 @@ export interface ChatMessage {
   type?: 'divider';
   text: string;
   thought?: string;
-  status?: 'pending' | 'accepted' | 'rejected' | 'superseded';
+  status?: 'pending' | 'accepted' | 'rejected' | 'partially_accepted' | 'superseded';
   isError?: boolean;
   timestamp?: number;
 }

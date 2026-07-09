@@ -21,6 +21,7 @@ You must return a JSON object matching this schema exactly:
   "proposedChanges": {
      // A Partial Resume object containing the fields that were modified.
      // CRITICAL: If you modify ANY section, you MUST return the ENTIRE "sections" array containing ALL sections and ALL items, with your modifications applied. DO NOT delete or omit other items or sections!
+     // DELETION RULE: If the user asks you to delete or remove a section or an item, DO NOT simply omit it from your response! Instead, you MUST include it and add a "_deleted": true property to it (e.g. { "id": "exp1", "_deleted": true }).
      // MULTI-SECTION UPDATES: If the user's request (e.g. adding a keyword) requires modifying MULTIPLE sections (like both 'summary' and 'skills'), you MUST modify all relevant sections. Do not limit yourself to just one section!
      // If you modified personal info, return the FULL "personalInfo" object.
      // Only include top-level keys ("personalInfo", "sections") if they were modified.
@@ -90,30 +91,50 @@ DO NOT default to Indonesian. Evaluate the text! If the bullet points are in Eng
 
     const parsed = JSON.parse(resultText);
 
-    // Smart merge: if the AI returned fewer sections than the original, it likely only returned the modified ones.
+    // Smart merge: Safely handle omissions and explicit deletions
     if (parsed.proposedChanges && Array.isArray(parsed.proposedChanges.sections)) {
-      if (parsed.proposedChanges.sections.length > 0 && parsed.proposedChanges.sections.length < resume.sections.length) {
-        // Merge them into the original sections array
-        const mergedSections = resume.sections.map(originalSection => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const modifiedSection = parsed.proposedChanges.sections.find((s: any) => s.id === originalSection.id);
-          if (modifiedSection) {
-            // Also merge items if the AI only returned modified items
-            if (Array.isArray(modifiedSection.items) && modifiedSection.items.length < originalSection.items.length) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const mergedItems = originalSection.items.map((originalItem: any) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const modifiedItem = modifiedSection.items.find((i: any) => i.id === originalItem.id);
-                return modifiedItem ? { ...originalItem, ...modifiedItem } : originalItem;
-              });
-              return { ...originalSection, ...modifiedSection, items: mergedItems };
+      let finalSections = resume.sections.map(originalSection => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const modifiedSection = parsed.proposedChanges.sections.find((s: any) => s.id === originalSection.id);
+        if (modifiedSection) {
+          if (modifiedSection._deleted) return null; // Explicitly deleted
+          
+          let finalItems = originalSection.items.map(originalItem => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const modifiedItem = modifiedSection.items?.find((i: any) => i.id === originalItem.id);
+            if (modifiedItem) {
+              if (modifiedItem._deleted) return null; // Explicitly deleted
+              return { ...originalItem, ...modifiedItem };
             }
-            return { ...originalSection, ...modifiedSection };
-          }
-          return originalSection;
-        });
-        parsed.proposedChanges.sections = mergedSections;
-      }
+            // If AI omitted the item, preserve it
+            return originalItem;
+          }).filter(Boolean);
+          
+          // Append any NEW items the AI added
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const newItems = modifiedSection.items?.filter((i: any) => !originalSection.items.some((oi: any) => oi.id === i.id)) || [];
+          finalItems = [...finalItems, ...newItems];
+
+          return { ...originalSection, ...modifiedSection, items: finalItems };
+        }
+        // If AI omitted the section entirely, preserve it
+        return originalSection;
+      }).filter(Boolean);
+
+      // Append any NEW sections the AI added
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const newSections = parsed.proposedChanges.sections.filter((s: any) => !resume.sections.some(os => os.id === s.id));
+      finalSections = [...finalSections, ...newSections];
+      
+      // Clean up _deleted flags before returning
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      finalSections.forEach((s: any) => {
+         delete s._deleted;
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         s.items?.forEach((i: any) => delete i._deleted);
+      });
+
+      parsed.proposedChanges.sections = finalSections;
 
       // Defensive pass: Ensure all items have a valid description array
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

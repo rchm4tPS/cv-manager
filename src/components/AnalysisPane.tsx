@@ -367,6 +367,7 @@ export function AnalysisPane() {
                     const status = editorSuggestions.find(s => (rec.suggestionId && s.id === rec.suggestionId) || (s.stepId === step.id && s.title === rec.title))?.status || 'pending';
                     const isDone = status === 'accepted';
                     const isDismissed = status === 'rejected';
+                    const isPartial = status === 'partially_accepted';
                     
                     return (
                     <div key={i} className="border border-blue-100 bg-blue-50/30 rounded-2xl p-4 md:p-5 relative group overflow-hidden">
@@ -378,6 +379,14 @@ export function AnalysisPane() {
                       {isDismissed && (
                         <div className="absolute inset-0 bg-red-500/90 z-20 flex items-center justify-center backdrop-blur-[1px]">
                           <X className="w-20 h-20 text-white drop-shadow-md" strokeWidth={3} />
+                        </div>
+                      )}
+                      {isPartial && (
+                        <div className="absolute inset-0 bg-amber-500/90 z-20 flex items-center justify-center backdrop-blur-[1px]">
+                          <div className="flex flex-col items-center">
+                            <Check className="w-16 h-16 text-white drop-shadow-md mb-1 opacity-90" strokeWidth={3} />
+                            <span className="text-white font-bold tracking-widest drop-shadow-md uppercase text-xs">Partially Accepted</span>
+                          </div>
                         </div>
                       )}
                       <div className="flex flex-col @[400px]:flex-row justify-between items-start gap-3 mb-4">
@@ -614,7 +623,7 @@ export function AnalysisPane() {
         )}
       </div>
 
-      {(resume.acceptedSuggestions?.length || resume.rejectedSuggestions?.length) ? (
+      {(resume.acceptedSuggestions?.length || resume.rejectedSuggestions?.length || resume.partiallyAcceptedSuggestions?.length) ? (
         <div className="mt-8 border-t pt-8 pb-4">
           <div className="text-center max-w-md mx-auto px-2 mb-6">
             <h3 className="text-lg md:text-xl font-bold text-slate-800 mb-2">Suggestion History</h3>
@@ -636,6 +645,29 @@ export function AnalysisPane() {
                       <div className="flex-1 pr-2">{text}</div>
                       <button 
                         onClick={() => removeSuggestionDecision(i, 'accepted')}
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity flex-shrink-0"
+                        title="Remove from memory"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {resume.partiallyAcceptedSuggestions && resume.partiallyAcceptedSuggestions.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-amber-700 flex items-center gap-2 mb-3">
+                  <Check className="w-4 h-4" />
+                  Partially Accepted Changes ({resume.partiallyAcceptedSuggestions.length})
+                </h4>
+                <div className="space-y-2">
+                  {resume.partiallyAcceptedSuggestions.map((text, i) => (
+                    <div key={`part-${i}`} className="bg-amber-50/50 border border-amber-100 rounded-lg p-3 text-xs text-slate-600 flex justify-between items-start group">
+                      <div className="flex-1 pr-2">{text}</div>
+                      <button 
+                        onClick={() => removeSuggestionDecision(i, 'partially_accepted')}
                         className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity flex-shrink-0"
                         title="Remove from memory"
                       >

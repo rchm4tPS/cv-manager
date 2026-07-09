@@ -197,8 +197,6 @@ export function AiChatPane() {
           size="sm" 
           className="text-red-500 hover:text-red-600 hover:bg-red-50"
           onClick={() => {
-            if (pendingChanges) discardAiChanges();
-            if (activeSuggestionIdForChat) setActiveSuggestionIdForChat(null);
             setIsChatOpen(false);
           }}
         >
@@ -213,7 +211,7 @@ export function AiChatPane() {
             {msg.type === 'divider' ? (
               <div className="flex items-center justify-center my-6">
                 <div className="h-px bg-slate-200 flex-1"></div>
-                <span className="text-xs text-slate-400 font-medium px-4 uppercase tracking-wider">{msg.text}</span>
+                <span className="text-xs text-slate-400 font-medium px-4 uppercase tracking-wider text-center shrink-0">{msg.text}</span>
                 <div className="h-px bg-slate-200 flex-1"></div>
               </div>
             ) : (
@@ -242,14 +240,18 @@ export function AiChatPane() {
                 <div className={`mt-3 pt-2 border-t text-xs font-semibold flex items-center gap-1 ${
                   msg.status === 'accepted' ? 'text-green-600' :
                   msg.status === 'rejected' ? 'text-red-600' :
+                  msg.status === 'partially_accepted' ? 'text-amber-600' :
                   msg.status === 'superseded' ? 'text-slate-500' :
                   'text-amber-600'
                 }`}>
                   {msg.status === 'accepted' && <Check className="w-3 h-3" />}
                   {msg.status === 'rejected' && <X className="w-3 h-3" />}
+                  {msg.status === 'partially_accepted' && <Check className="w-3 h-3" />}
                   {msg.status === 'superseded' && <X className="w-3 h-3 opacity-50" />}
                   {msg.status === 'pending' && <Loader2 className="w-3 h-3 animate-spin" />}
-                  {msg.status === 'superseded' ? 'Suggestion overridden' : `Suggestion ${msg.status}`}
+                  {msg.status === 'superseded' ? 'Suggestion overridden' : 
+                   msg.status === 'partially_accepted' ? 'Suggestion partially accepted' : 
+                   `Suggestion ${msg.status}`}
                 </div>
               )}
               {msg.isError && msg.timestamp && (
