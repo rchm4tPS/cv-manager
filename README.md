@@ -26,6 +26,7 @@ If you are looking for a developer who can:
 ## ✨ Key Features
 
 - 🧠 **AI-Powered Resume Tailoring:** Integrates with the Google Gemini API to analyze job descriptions and automatically suggest tailored improvements to your resume.
+- 🔍 **Granular AI Diffing & Inline Edits:** Review AI suggestions with surgical precision. Features atomic diffing algorithms that let you accept, reject, or partially accept specific sentences, bullet points, or profile items directly inline, fully synced with the AI Chat state and undo/redo history.
 - 💡 **Interactive AI Chat & Query Suggestions:** Engage with the AI via a built-in chat pane, featuring ATS-focused query suggestions for quick and effective resume refinement.
 - 🌐 **Smart Language Detection & Enforcement:** The AI engine intelligently detects the primary language directly from your CV context (bypassing location bias) and strictly enforces language consistency across all feedback and analysis.
 - 🎯 **One-Click Job Tailoring:** Easily duplicate a master CV and link it to a specific job directly from the editor page of master CV or from job tracker table, providing a completely fresh analysis workspace for each unique application.
