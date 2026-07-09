@@ -9,10 +9,10 @@ interface AuthState {
   setUser: (user: User | null) => void;
   setSession: (session: Session | null) => void;
   setLoading: (isLoading: boolean) => void;
-  initializeAuth: () => void;
+  initializeAuth: () => () => void;
   signOut: () => Promise<void>;
   signInWithGoogle: (redirectTo: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, redirectTo: string) => Promise<{ error: any }>;
+  signUpWithEmail: (email: string, password: string, redirectTo: string) => Promise<{ data: any, error: any }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: any }>;
 }
 
@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signUpWithEmail: async (email, password, redirectTo) => {
     set({ isLoading: true });
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       },
     });
     set({ isLoading: false });
-    return { error };
+    return { data, error };
   },
 
   signInWithEmail: async (email, password) => {

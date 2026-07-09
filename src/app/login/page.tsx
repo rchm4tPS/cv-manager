@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   
   const router = useRouter()
@@ -19,12 +20,19 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setSuccessMsg(null)
 
     try {
       if (isSignUp) {
-        const { error } = await signUpWithEmail(email, password, `${window.location.origin}/auth/callback`)
+        const { data, error } = await signUpWithEmail(email, password, `${window.location.origin}/auth/callback`)
         if (error) throw error
-        setError('Check your email for the confirmation link.')
+        
+        if (data?.session) {
+          // If session exists, email confirmation is disabled/verified immediately
+          router.push('/home')
+        } else {
+          setSuccessMsg('Check your email for the confirmation link.')
+        }
       } else {
         const { error } = await signInWithEmail(email, password)
         if (error) throw error
@@ -37,8 +45,12 @@ export default function LoginPage() {
     }
   }
 
-  const handleGoogleSignIn = () => {
-    signInWithGoogle(`${window.location.origin}/auth/callback`)
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle(`${window.location.origin}/auth/callback`)
+    } catch (err: any) {
+      setError(err.message)
+    }
   }
 
   return (
@@ -72,7 +84,7 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete={isSignUp ? "new-password" : "current-password"}
                 required
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-slate-300 placeholder-slate-500 text-slate-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
@@ -83,8 +95,14 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className={`text-sm ${error.includes('Check your email') ? 'text-green-600' : 'text-red-500'} text-center`}>
+            <div className="mb-4 p-3 rounded text-sm bg-red-50 text-red-600">
               {error}
+            </div>
+          )}
+          
+          {successMsg && (
+            <div className="mb-4 p-3 rounded text-sm bg-green-50 text-green-600">
+              {successMsg}
             </div>
           )}
 

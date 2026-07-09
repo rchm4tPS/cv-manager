@@ -35,7 +35,10 @@ export function Header() {
   useEffect(() => {
     // eslint-disable-next-line
     setIsMounted(true);
-    initializeAuth();
+    const unsubscribe = initializeAuth();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [initializeAuth]);
 
   const handleTitleSubmit = () => {
