@@ -205,7 +205,7 @@ export default function JobsPage() {
     setTailorModalJob(job);
     setLoadingResumes(true);
     try {
-      const data = await supabaseApi.getResumes(user?.id || "local-user");
+      const data = await supabaseApi.getResumes(user!.id);
       if (data) setRecentResumes(data);
     } catch {
       toast({ title: "Error", description: "Failed to load resumes", variant: "destructive" });
@@ -219,7 +219,7 @@ export default function JobsPage() {
     
     try {
       // 1. Fetch original resume
-      const original = await supabaseApi.getResumeById(resumeId, user?.id || "local-user");
+      const original = await supabaseApi.getResumeById(resumeId, user!.id);
       if (!original) throw new Error("Resume not found");
 
       // 2. Duplicate it

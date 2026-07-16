@@ -33,13 +33,13 @@ export default function EditorPage() {
       
       if (params.id === 'new') {
         const metadata = user ? { ...user.user_metadata, email: user.email } : undefined;
-        initBlankResume(user?.id || "local-user", metadata);
+        initBlankResume(user!.id, metadata);
         setIsLoading(false);
         return;
       }
 
       try {
-        const data = await supabaseApi.getResumeById(params.id as string, user?.id || "local-user");
+        const data = await supabaseApi.getResumeById(params.id as string, user!.id);
         if (data) {
           setResume(data);
           if (data.tailoringJob) {

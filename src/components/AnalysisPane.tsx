@@ -79,7 +79,7 @@ export function AnalysisPane() {
       const duplicatedResume = {
         ...resume,
         id: 'new', // Instructs supabaseApi.saveResume to let DB generate new UUID
-        userId: user?.id || "local-user",
+        userId: user!.id,
         title: `${job.position} ${new Date().getFullYear()} - ${job.company}`,
         analysisResult: undefined,
         acceptedSuggestions: undefined,

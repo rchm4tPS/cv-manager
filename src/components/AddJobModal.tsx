@@ -109,7 +109,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
       const { dateApplied, ...restFormData } = formData;
       const jobToSave = {
         id: job ? job.id : `temp-${Date.now()}`,
-        userId: user?.id || "local-user",
+        userId: user!.id,
         dateAdded: job ? job.dateAdded : new Date().toISOString(),
         dateApplied: dateApplied ? dateApplied.toISOString() : undefined,
         ...restFormData,

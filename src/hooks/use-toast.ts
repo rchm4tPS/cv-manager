@@ -4,8 +4,10 @@ export interface Toast {
   id: string;
   title?: string;
   description?: string;
-  variant?: 'default' | 'destructive';
+  variant?: 'default' | 'destructive' | 'success';
   isClosing?: boolean;
+  duration?: number;
+  className?: string;
 }
 
 interface ToastStore {
@@ -32,7 +34,7 @@ export const useToastStore = create<ToastStore>((set) => ({
         }
         return state;
       });
-    }, 5000);
+    }, toast.duration || 5000);
   },
   closeToast: (id) => {
     set((state) => ({ toasts: state.toasts.map(t => t.id === id ? { ...t, isClosing: true } : t) }));

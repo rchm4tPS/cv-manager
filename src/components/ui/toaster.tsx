@@ -17,8 +17,10 @@ export function Toaster() {
           } ${
             toast.variant === "destructive"
               ? "bg-rose-50 text-rose-800 border-rose-200"
+              : toast.variant === "success"
+              ? "bg-green-50 text-green-800 border-green-200"
               : "bg-background text-foreground"
-          }`}
+          } ${toast.className || ""}`}
         >
           <div className="flex justify-between items-start">
             <div className="flex flex-col gap-1">
@@ -29,7 +31,7 @@ export function Toaster() {
             </div>
             <button
               onClick={() => closeToast(toast.id)}
-              className="text-muted-foreground hover:text-foreground opacity-50 hover:opacity-100"
+              className="opacity-50 hover:opacity-100 transition-opacity"
             >
               ✕
             </button>

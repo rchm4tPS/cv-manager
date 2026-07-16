@@ -64,7 +64,7 @@ export default function HomePage() {
 
       const newResume: Resume = {
         id: "new",
-        userId: user?.id || "local-user",
+        userId: user!.id,
         title: title,
         personalInfo: parsedData.personalInfo || { name: "", email: "", phone: "", location: "" },
         sections: parsedData.sections || [],

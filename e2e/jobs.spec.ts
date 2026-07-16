@@ -6,15 +6,27 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const TEST_USER_ID = 'local-user'; // The app currently uses local-user hardcoded for everything. 
+let TEST_USER_ID = ''; 
 const TEST_COMPANY_PREFIX = 'PLAYWRIGHT_TEST_COMPANY_';
 
 test.describe('Jobs Store E2E Tests', () => {
   let seededJobIds: string[] = [];
 
   test.beforeAll(async () => {
+    // 1. Authenticate with Supabase to get the real UUID for DB seeding
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: 'luv4zhan@gmail.com',
+      password: process.env.E2E_TEST_PASSWORD || 'Luv4zhan'
+    });
+    
+    if (error || !data.user) {
+      throw new Error(`Failed to authenticate E2E test user: ${error?.message}. Did you set E2E_TEST_PASSWORD in .env.local?`);
+    }
+    
+    TEST_USER_ID = data.user.id;
+
     // Clean up any stray test jobs before we start
-    await supabase.from('jobs').delete().like('company', `${TEST_COMPANY_PREFIX}%`);
+    await supabase.from('jobs').delete().eq('user_id', TEST_USER_ID).like('company', `${TEST_COMPANY_PREFIX}%`);
 
     // Seed test jobs
     const jobsToInsert = [
@@ -23,9 +35,9 @@ test.describe('Jobs Store E2E Tests', () => {
       { user_id: TEST_USER_ID, company: `${TEST_COMPANY_PREFIX}3`, position: 'Fullstack Engineer', status: 'interview' }
     ];
 
-    const { data } = await supabase.from('jobs').insert(jobsToInsert).select();
-    if (data) {
-      seededJobIds = data.map((j: { id: string }) => j.id);
+    const { data: insertedData } = await supabase.from('jobs').insert(jobsToInsert).select();
+    if (insertedData) {
+      seededJobIds = insertedData.map((j: { id: string }) => j.id);
     }
   });
 
@@ -39,8 +51,16 @@ test.describe('Jobs Store E2E Tests', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    // Go to the jobs page
+    // Log into the UI via Playwright
+    await page.goto('/login');
+    await page.fill('input[type="email"]', 'luv4zhan@gmail.com');
+    await page.fill('input[type="password"]', process.env.E2E_TEST_PASSWORD || 'Luv4zhan');
+    await page.click('button:has-text("Sign in")');
+    
+    // Wait for redirect to /home or explicitly go to /jobs
+    await page.waitForURL('**/home');
     await page.goto('/jobs');
+
     // Wait for jobs to load
     await expect(page.getByText('Job Applications')).toBeVisible();
     await expect(page.getByText(`${TEST_COMPANY_PREFIX}1`)).toBeVisible();

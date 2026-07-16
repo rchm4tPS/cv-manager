@@ -196,7 +196,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   };
 
   return {
-  resume: createBlankResume('local-user'),
+  resume: createBlankResume(""),
   tailoringJob: getInitialTailoringJob(),
   isDirty: false,
   setIsDirty: (dirty) => set({ isDirty: dirty }),

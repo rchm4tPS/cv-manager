@@ -15,7 +15,8 @@ ALTER TABLE resumes ENABLE ROW LEVEL SECURITY;
 
 -- Create policy for authenticated users
 CREATE POLICY "Users can manage their own resumes" ON resumes 
-  FOR ALL USING (auth.uid() = user_id);
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 
 -- Enums for new job columns
@@ -47,7 +48,8 @@ ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 
 -- Create policy for authenticated users
 CREATE POLICY "Users can manage their own jobs" ON jobs 
-  FOR ALL USING (auth.uid() = user_id);
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 
 -- 3. Storage Bucket for Avatars

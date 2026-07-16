@@ -13,6 +13,9 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
+      if (next.startsWith('/login')) {
+        await supabase.auth.signOut()
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
