@@ -13,7 +13,7 @@ import { useResumeStore } from "@/store/useResumeStore";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useRouter, useParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useRequireUser } from "@/hooks/useRequireUser";
 
 type TabType = "editor" | "analysis" | "settings";
 
@@ -25,11 +25,11 @@ export default function EditorPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { setResume, initBlankResume, isChatOpen, setIsChatOpen, setTailoringJob } = useResumeStore();
-  const { user } = useAuthStore();
+  const user = useRequireUser();
 
   useEffect(() => {
     async function loadResume() {
-      if (!params.id) return;
+      if (!params.id || !user) return;
       
       if (params.id === 'new') {
         const metadata = user ? { ...user.user_metadata, email: user.email } : undefined;

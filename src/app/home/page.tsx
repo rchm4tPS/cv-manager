@@ -11,13 +11,13 @@ import { CvUploadOverlay } from "@/components/CvUploadOverlay";
 import { RecentResumesList } from "@/components/RecentResumesList";
 import { DocumentSettings } from "@/types/resume";
 import { useToast } from "@/hooks/use-toast";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useRequireUser } from "@/hooks/useRequireUser";
 
 export default function HomePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { setTailoringJob, resumeList, isListLoading, fetchResumeList, deleteResumeFromList } = useResumeStore();
-  const { user } = useAuthStore();
+  const user = useRequireUser();
   
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);

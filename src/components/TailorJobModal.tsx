@@ -9,7 +9,7 @@ import { createPortal } from "react-dom";
 import { AddJobModal } from "./AddJobModal";
 
 import { Job } from "@/types/job";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useRequireUser } from "@/hooks/useRequireUser";
 
 interface TailorJobModalProps {
   isOpen: boolean;
@@ -23,7 +23,7 @@ export function TailorJobModal({ isOpen, onClose, onSelectJob, isDuplicating }: 
   const [loading, setLoading] = useState(true);
   const [tailoredResumesByJob, setTailoredResumesByJob] = useState<Record<string, string[]>>({});
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
-  const { user } = useAuthStore();
+  const user = useRequireUser();
 
   const [mounted, setMounted] = useState(false);
 

@@ -9,7 +9,7 @@ import { TailorJobModal } from "./TailorJobModal";
 import { useRouter } from "next/navigation";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useJobStore } from "@/store/useJobStore";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useRequireUser } from "@/hooks/useRequireUser";
 
 export function AnalysisPane() {
   const { 
@@ -35,7 +35,7 @@ export function AnalysisPane() {
   const [isTailorModalOpen, setIsTailorModalOpen] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const router = useRouter();
-  const { user } = useAuthStore();
+  const user = useRequireUser();
   
   const { jobs, fetchJobs } = useJobStore();
 

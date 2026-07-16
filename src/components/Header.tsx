@@ -273,10 +273,15 @@ export function Header() {
                   variant="outline" 
                   className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
                   onClick={async () => {
-                    await signOut();
+                    try {
+                      await signOut();
+                    } catch (error) {
+                      console.error("Logout error:", error);
+                    }
                     setIsMenuOpen(false);
-                    router.push('/login');
-                    router.refresh(); // Force a server-side refresh to ensure middleware runs correctly
+                    // Gunakan window.location.href untuk memaksa full page reload
+                    // Ini memastikan Next.js Middleware mendeteksi hilangnya cookie sesi dengan benar
+                    window.location.href = '/login';
                   }}
                 >
                   <LogOut className="w-4 h-4 mr-2" />

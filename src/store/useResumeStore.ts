@@ -47,8 +47,8 @@ interface ResumeStore {
   discardPendingChanges: () => void;
   acceptAiChanges: () => void;
   discardAiChanges: () => void;
-  acceptPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
-  rejectPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
+  acceptPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item'|'new_section'|'new_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
+  rejectPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item'|'new_section'|'new_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
   partialDecisions: { accepted: number; rejected: number };
   // AI Suggestions Checklist
   editorSuggestions: EditorSuggestion[];
@@ -625,6 +625,33 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
         newResume.sections = newSections;
         changeApplied = true;
       }
+    } else if (fieldType === 'new_section') {
+      const pendingSection = newPendingSections.find(s => s.id === sectionId);
+      if (pendingSection) {
+        newSections.push({ ...pendingSection });
+        newResume.sections = newSections;
+        changeApplied = true;
+      }
+    } else if (fieldType === 'new_item') {
+      const targetSectionIdx = newSections.findIndex(s => s.id === sectionId);
+      const pendingSection = newPendingSections.find(s => s.id === sectionId);
+      if (pendingSection) {
+        const pendingItem = pendingSection.items.find(i => i.id === itemId);
+        if (pendingItem) {
+          if (targetSectionIdx !== -1) {
+            const newSection = { ...newSections[targetSectionIdx] };
+            const newItems = [...newSection.items];
+            newItems.push({ ...pendingItem });
+            newSection.items = newItems;
+            newSections[targetSectionIdx] = newSection;
+          } else {
+            // If the section doesn't exist yet, create it with just this item
+            newSections.push({ ...pendingSection, items: [{ ...pendingItem }] });
+          }
+          newResume.sections = newSections;
+          changeApplied = true;
+        }
+      }
     } else if (fieldType === 'deleted_item') {
       const targetSectionIdx = newSections.findIndex(s => s.id === sectionId);
       if (targetSectionIdx !== -1) {
@@ -800,6 +827,27 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
         newPendingSections.splice(originalIdx, 0, targetSection);
         newPendingChanges.sections = newPendingSections;
         changeApplied = true;
+      }
+    } else if (fieldType === 'new_section') {
+      const pendingIdx = newPendingSections.findIndex(s => s.id === sectionId);
+      if (pendingIdx !== -1) {
+        newPendingSections.splice(pendingIdx, 1);
+        newPendingChanges.sections = newPendingSections;
+        changeApplied = true;
+      }
+    } else if (fieldType === 'new_item') {
+      const pendingSectionIdx = newPendingSections.findIndex(s => s.id === sectionId);
+      if (pendingSectionIdx !== -1) {
+        const pendingSection = { ...newPendingSections[pendingSectionIdx] };
+        const pendingItems = [...pendingSection.items];
+        const pendingItemIdx = pendingItems.findIndex(i => i.id === itemId);
+        if (pendingItemIdx !== -1) {
+          pendingItems.splice(pendingItemIdx, 1);
+          pendingSection.items = pendingItems;
+          newPendingSections[pendingSectionIdx] = pendingSection;
+          newPendingChanges.sections = newPendingSections;
+          changeApplied = true;
+        }
       }
     } else if (fieldType === 'deleted_item') {
       const targetSection = state.resume.sections.find(s => s.id === sectionId);

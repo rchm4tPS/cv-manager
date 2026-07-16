@@ -3,11 +3,12 @@ import { updateSession } from './lib/supabase-server'
 
 export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request)
-  
+
   const isAuthPage = request.nextUrl.pathname.startsWith('/login')
-  const isProtectedPage = request.nextUrl.pathname.startsWith('/home') || 
-                          request.nextUrl.pathname.startsWith('/editor') || 
-                          request.nextUrl.pathname.startsWith('/jobs')
+  const isProtectedPage = request.nextUrl.pathname.startsWith('/home') ||
+    request.nextUrl.pathname.startsWith('/editor') ||
+    request.nextUrl.pathname.startsWith('/jobs') ||
+    request.nextUrl.pathname.startsWith('/create-pass')
 
   if (isAuthPage && user) {
     // If user is already logged in, redirect them away from the login page

@@ -16,12 +16,12 @@ const JOB_STATUSES = ['saved', 'applied', 'interviewed', 'offered', 'rejected'];
 import { cn, formatSalaryString } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { InlineDatePicker, InlineStatusPicker, EditableText } from "@/components/ui/inline-editors";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useRequireUser } from "@/hooks/useRequireUser";
 export default function JobsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { setTailoringJob } = useResumeStore();
-  const { user } = useAuthStore();
+  const user = useRequireUser();
 
   const { jobs, fetchJobs, updateJob, deleteJobs, isLoading } = useJobStore();
   const [isMounted, setIsMounted] = useState(false);

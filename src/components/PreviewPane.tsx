@@ -198,7 +198,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   const [zoom, setZoom] = useState(1);
   const [isSpacingMode, setIsSpacingMode] = useState(false);
   
-  const ActionButtons = ({ sectionId, itemId, fieldType, descIndex, descInfo }: { sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item', descIndex?: number, descInfo?: any }) => {
+  const ActionButtons = ({ sectionId, itemId, fieldType, descIndex, descInfo, isInline }: { sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item'|'new_section'|'new_item', descIndex?: number, descInfo?: any, isInline?: boolean }) => {
     const onAccept = () => {
       const res = acceptPartialChange(sectionId, itemId, fieldType, descInfo || descIndex);
       if (res?.isComplete) {
@@ -218,7 +218,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
       }
     };
     return (
-      <div className="absolute -right-10 top-1/2 -translate-y-1/2 flex flex-col gap-1 z-50 print:hidden opacity-0 group-hover/diff:opacity-100 transition-opacity">
+      <div className={`absolute ${isInline ? 'left-full top-1/2 -translate-y-1/2 pl-1' : '-right-10 top-1/2 -translate-y-1/2'} flex flex-col gap-1 z-50 print:hidden opacity-0 group-hover/diff:opacity-100 transition-opacity`}>
         <button onClick={onAccept} className="bg-green-500 text-white rounded p-1 hover:bg-green-600 shadow"><Check className="w-3 h-3" /></button>
         <button onClick={onReject} className="bg-red-500 text-white rounded p-1 hover:bg-red-600 shadow"><X className="w-3 h-3" /></button>
       </div>
@@ -659,6 +659,19 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                 </>
               );
             }
+            const isNewSection = pendingChanges?.sections && !originalSection && !isSectionDeleted;
+            if (isNewSection) {
+              return (
+                <>
+                  <ActionButtons sectionId={section.id} itemId="" fieldType="new_section" />
+                  <h2 className="font-bold uppercase tracking-widest text-black border-b border-black pb-1 bg-green-100/50 outline outline-1 outline-green-400 rounded-sm" style={{ fontSize: `${typography.headingSize}px` }}>
+                    <span className={`${editableClass} block w-full`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleSectionTitleBlur(section.id, e)}>
+                      {section.title}
+                    </span>
+                  </h2>
+                </>
+              );
+            }
             return (
               <h2 className="font-bold uppercase tracking-widest text-black border-b border-black pb-1" style={{ fontSize: `${typography.headingSize}px` }}>
                 <span className={`${editableClass} block w-full`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleSectionTitleBlur(section.id, e)}>
@@ -748,7 +761,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
           <div 
             key={`item-${item.id}`} 
             data-measure-id={`item-${item.id}`} 
-            className={`${isItemDeleted ? 'group/diff' : ''} relative transition-colors duration-300 ${draggedItem?.sectionId === section.id && draggedItem?.index === index ? 'opacity-50 bg-slate-50/50 outline-dashed outline-2 outline-blue-400 rounded-sm outline-offset-4' : ''} ${itemHighlightClass}`}
+            className={`${isItemDeleted || isNewItem ? 'group/diff' : ''} relative transition-colors duration-300 ${draggedItem?.sectionId === section.id && draggedItem?.index === index ? 'opacity-50 bg-slate-50/50 outline-dashed outline-2 outline-blue-400 rounded-sm outline-offset-4' : ''} ${itemHighlightClass}`}
             draggable={draggableItem === item.id}
             onDragStart={(e) => handleDragStart(e, section.id, index)}
             onDragEnter={(e) => handleDragEnter(e, section.id, index)}
@@ -760,6 +773,9 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
             )}
             {isSectionDeleted && (
                <ActionButtons sectionId={section.id} itemId="" fieldType="deleted_section" />
+            )}
+            {isNewItem && (
+               <ActionButtons sectionId={section.id} itemId={item.id} fieldType="new_item" />
             )}
             <div 
               className="absolute -left-8 top-1 opacity-0 group-hover:opacity-100 cursor-move transition-opacity p-1"
@@ -932,13 +948,13 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                                 )}
                                 {hasNew ? (
                                   <span className={`relative group/diff ${isChanged ? 'bg-green-100/50 outline outline-1 outline-green-400 rounded-sm' : ''} ${editableListClass} inline-block`}>
-                                    {isChanged && <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />}
+                                    {isChanged && <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} isInline />}
                                     <span className="inline-block" contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleDescBlur(section.id, item.id, i, e)} dangerouslySetInnerHTML={{ __html: newD }} />
                                   </span>
                                 ) : (
                                   isChanged && hasOld && (
                                     <span className="text-red-900 bg-red-100/50 line-through relative group/diff mr-1 inline-block">
-                                      <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />
+                                      <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} isInline />
                                       <span dangerouslySetInnerHTML={{ __html: oldD }} />
                                     </span>
                                   )
@@ -949,7 +965,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                           })}
                         </div>
                       ) : (
-                        <ul className="list-disc list-outside ml-5 text-black" style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
+                        <ul className="text-black" style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
                           {combinedDesc.map(({ i, newD, oldD, isChanged }, idx) => {
                             const hasNew = newD !== undefined && String(newD).replace(/<[^>]*>?/gm, '').trim() !== '';
                             const hasOld = oldD !== undefined && String(oldD).replace(/<[^>]*>?/gm, '').trim() !== '';
@@ -958,20 +974,29 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                             return (
                               <React.Fragment key={i}>
                                 {(isChanged && hasOld && hasNew) ? (
-                                  <li className={`relative group/diff outline outline-1 outline-amber-400 rounded-sm ${editableListClass}`}>
-                                    <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />
-                                    <span className="block" contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleDescBlur(section.id, item.id, i, e)} dangerouslySetInnerHTML={{ __html: isEditable ? newD : generateWordDiffHtml(oldD as string, newD as string) }} />
+                                  <li className="flex items-start">
+                                    <span className="mr-2 shrink-0 select-none">&bull;</span>
+                                    <div className={`relative flex-1 group/diff outline outline-1 outline-amber-400 rounded-sm ${editableListClass}`}>
+                                      <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />
+                                      <span className="inline" contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleDescBlur(section.id, item.id, i, e)} dangerouslySetInnerHTML={{ __html: isEditable ? newD : generateWordDiffHtml(oldD as string, newD as string) }} />
+                                    </div>
                                   </li>
                                 ) : hasNew ? (
-                                  <li className={`relative group/diff ${isChanged ? 'bg-green-100/50 outline outline-1 outline-green-400 rounded-sm' : ''} ${editableListClass}`}>
-                                    {isChanged && <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />}
-                                    <span className="block" contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleDescBlur(section.id, item.id, i, e)} dangerouslySetInnerHTML={{ __html: newD }} />
+                                  <li className="flex items-start">
+                                    <span className="mr-2 shrink-0 select-none">&bull;</span>
+                                    <div className={`relative flex-1 group/diff ${isChanged ? 'bg-green-100/50 outline outline-1 outline-green-400 rounded-sm' : ''} ${editableListClass}`}>
+                                      {isChanged && <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />}
+                                      <span className="inline" contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleDescBlur(section.id, item.id, i, e)} dangerouslySetInnerHTML={{ __html: newD }} />
+                                    </div>
                                   </li>
                                 ) : (
                                   isChanged && hasOld && (
-                                    <li className="text-red-900 bg-red-100/50 line-through relative group/diff">
-                                      <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />
-                                      <span dangerouslySetInnerHTML={{ __html: oldD }} />
+                                    <li className="flex items-start">
+                                      <span className="mr-2 shrink-0 select-none">&bull;</span>
+                                      <div className="text-red-900 bg-red-100/50 line-through relative flex-1 group/diff">
+                                        <ActionButtons sectionId={section.id} itemId={item.id} fieldType="description" descInfo={{ oldVal: oldD, newVal: newD, index: i }} />
+                                        <span dangerouslySetInnerHTML={{ __html: oldD }} />
+                                      </div>
                                     </li>
                                   )
                                 )}
