@@ -18,6 +18,9 @@ CREATE POLICY "Users can manage their own resumes" ON resumes
   FOR ALL USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+-- Grant privileges
+GRANT ALL ON TABLE resumes TO anon, authenticated, service_role;
+
 
 -- Enums for new job columns
 CREATE TYPE job_source_enum AS ENUM ('relasi/teman', 'keluarga', 'dosen', 'linked in', 'grup WA', 'website perusahaan', 'glints', 'jobstreet', 'indeed', 'mendapat sendiri di dunia nyata', 'instagram', 'twitter', 'Threads by Instagram', 'facebook', 'referral', 'dealls');
@@ -50,6 +53,9 @@ ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage their own jobs" ON jobs 
   FOR ALL USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
+
+-- Grant privileges
+GRANT ALL ON TABLE jobs TO anon, authenticated, service_role;
 
 
 -- 3. Storage Bucket for Avatars
