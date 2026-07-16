@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/lib/gemini';
 import { createClient } from '@/lib/supabase-server';
-import { Resume, ChatMessage } from '@/types/resume';
+import { Resume } from '@/types/resume';
 
 export const maxDuration = 60; // Allow up to 60 seconds for the AI response
 

@@ -26,8 +26,6 @@ export function AiChatPane() {
     chatMessages,
     setChatMessages,
     setIsChatOpen,
-    activeSuggestionIdForChat,
-    setActiveSuggestionIdForChat,
     pendingAiMessage,
     setPendingAiMessage,
     acceptAiChanges,

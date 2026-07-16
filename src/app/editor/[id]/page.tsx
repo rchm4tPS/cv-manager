@@ -70,7 +70,7 @@ export default function EditorPage() {
     if (savedTab) setActiveTab(savedTab);
 
     loadResume();
-  }, [params.id, setResume, initBlankResume, router, toast, setTailoringJob, user?.id]);
+  }, [params.id, setResume, initBlankResume, router, toast, setTailoringJob, user]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);

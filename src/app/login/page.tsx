@@ -22,6 +22,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (verified === 'true') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsSignUp(false)
       // Remove query param to avoid re-triggering on refresh
       window.history.replaceState(null, '', '/login')
@@ -47,8 +48,8 @@ export default function LoginPage() {
       const { error } = await resetPasswordForEmail(email, `${window.location.origin}/auth/callback?next=/create-pass`)
       if (error) throw error
       setSuccessMsg('Password reset link sent! Check your email.')
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -76,8 +77,8 @@ export default function LoginPage() {
         if (error) throw error
         router.push('/home')
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -86,8 +87,8 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle(`${window.location.origin}/auth/callback`)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError((err as Error).message)
     }
   }
 

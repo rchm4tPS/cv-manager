@@ -247,6 +247,7 @@ export function Header() {
                 <div className="flex items-center gap-3 px-2 py-1 mb-2">
                   <div className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold overflow-hidden">
                     {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img 
                         src={user.user_metadata.avatar_url || user.user_metadata.picture} 
                         alt="Profile" 

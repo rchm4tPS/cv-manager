@@ -63,6 +63,7 @@ export function TailorJobModal({ isOpen, onClose, onSelectJob, isDuplicating }: 
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchJobsAndResumes();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, user?.id]);
 
   if (!isOpen || !mounted) return null;

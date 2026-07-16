@@ -92,7 +92,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
         }).catch(console.error);
       }
     }
-  }, [isOpen, job]);
+  }, [isOpen, job, user?.id]);
 
   const handleSave = async () => {
     if (!formData.company || !formData.position) {

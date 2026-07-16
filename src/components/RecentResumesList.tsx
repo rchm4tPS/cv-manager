@@ -28,7 +28,7 @@ export const RecentResumesList: React.FC<RecentResumesListProps> = ({
     const stored = localStorage.getItem('resumeViewMode');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored === 'table' || stored === 'grid') setViewMode(stored);
-  }, [fetchJobs]);
+  }, [fetchJobs, user?.id]);
 
   const handleViewModeChange = (mode: 'grid' | 'table') => {
     setViewMode(mode);

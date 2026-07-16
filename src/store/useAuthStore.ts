@@ -12,9 +12,9 @@ interface AuthState {
   initializeAuth: () => () => void;
   signOut: () => Promise<void>;
   signInWithGoogle: (redirectTo: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, redirectTo: string) => Promise<{ data: any, error: any }>;
-  signInWithEmail: (email: string, password: string) => Promise<{ error: any }>;
-  resetPasswordForEmail: (email: string, redirectTo: string) => Promise<{ error: any }>;
+  signUpWithEmail: (email: string, password: string, redirectTo: string) => Promise<{ data: { session: Session | null } | null, error: unknown }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error: unknown }>;
+  resetPasswordForEmail: (email: string, redirectTo: string) => Promise<{ error: unknown }>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({

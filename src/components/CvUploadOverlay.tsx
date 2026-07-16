@@ -137,6 +137,7 @@ export function CvUploadOverlay({ open, onOpenChange, onSuccess }: CvUploadOverl
     setParsedData(prev => prev ? {
       ...prev,
       personalInfo: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...(prev.personalInfo || {} as any),
         [field]: value
       }

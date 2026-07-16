@@ -37,6 +37,7 @@ export default function CreatePassPage() {
       setTimeout(() => {
         router.push('/home')
       }, 2000)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message)
     } finally {

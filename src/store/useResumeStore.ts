@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { Resume, DocumentSettings, Section, AnalysisResult, AnalysisMode, ChatMessage, EditorSuggestion } from '@/types/resume';
 import { supabaseApi } from '@/lib/supabase-api';
 
+export type DescIndex = number | { oldVal?: string, newVal?: string, index?: number };
+export type UserMetadata = { name?: string; full_name?: string; email?: string; avatar_url?: string; picture?: string; [key: string]: unknown };
+
 interface ResumeStore {
   resume: Resume;
   appTheme: 'default' | 'anthropic';
@@ -15,7 +18,7 @@ interface ResumeStore {
   updateSection: (sectionId: string, data: Partial<Section>) => void;
   deleteSection: (sectionId: string) => void;
   reorderSections: (sections: Section[]) => void;
-  initBlankResume: (userId: string, userMetadata?: any) => void;
+  initBlankResume: (userId: string, userMetadata?: UserMetadata) => void;
   updateTitle: (title: string) => void;
   isDirty: boolean;
   setIsDirty: (dirty: boolean) => void;
@@ -44,8 +47,8 @@ interface ResumeStore {
   discardPendingChanges: () => void;
   acceptAiChanges: () => void;
   discardAiChanges: () => void;
-  acceptPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item', descIndex?: any) => { isComplete: boolean, finalStatus?: string } | void;
-  rejectPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item', descIndex?: any) => { isComplete: boolean, finalStatus?: string } | void;
+  acceptPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
+  rejectPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
   partialDecisions: { accepted: number; rejected: number };
   // AI Suggestions Checklist
   editorSuggestions: EditorSuggestion[];
@@ -67,7 +70,7 @@ interface ResumeStore {
   syncResumeToList: (resume: Resume) => void;
 }
 
-const createBlankResume = (userId: string, userMetadata?: any): Resume => ({
+const createBlankResume = (userId: string, userMetadata?: UserMetadata): Resume => ({
   id: 'new',
   userId: userId,
   title: 'Untitled Resume',
@@ -437,7 +440,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       },
       isDirty: true,
     })),
-  initBlankResume: (userId: string, userMetadata?: any) => set({ 
+  initBlankResume: (userId: string, userMetadata?: UserMetadata) => set({ 
     resume: createBlankResume(userId, userMetadata), 
     isDirty: false, 
     pastStates: [], 
@@ -605,11 +608,13 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
         newResume.personalInfo = {
           ...newResume.personalInfo,
           [field]: pendingValue
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
         // Update pendingChanges to match the accepted state so isComplete triggers properly
         newPendingChanges.personalInfo = {
           ...newPendingChanges.personalInfo,
           [field]: pendingValue
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
         changeApplied = true;
       }
@@ -663,11 +668,11 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
               const newDesc = [...newItem.description];
               const pendingDesc = [...pendingItem.description];
               if (typeof descIndex === 'object') {
-                 const { oldVal, newVal, index } = descIndex as any;
+                 const { oldVal, newVal, index } = descIndex as { oldVal?: string, newVal?: string, index?: number };
                  if (oldVal !== undefined && newVal !== undefined) {
                     const idx = newDesc.indexOf(oldVal);
                     if (idx !== -1) newDesc[idx] = newVal;
-                    else newDesc[index] = newVal;
+                    else if (index !== undefined) newDesc[index] = newVal;
                  } else if (oldVal !== undefined && newVal === undefined) {
                     const idx = newDesc.indexOf(oldVal);
                     if (idx !== -1) newDesc.splice(idx, 1);
@@ -684,6 +689,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
               }
               newItem.description = newDesc;
             } else {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (newItem as any)[fieldType] = (pendingItem as any)[fieldType];
             }
 
@@ -783,6 +789,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
         newPendingChanges.personalInfo = {
           ...newPendingChanges.personalInfo,
           [field]: state.resume.personalInfo[field]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
         changeApplied = true;
       }
@@ -837,7 +844,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
               const newPendingDesc = [...pendingItem.description];
               const resumeDesc = [...state.resume.sections.find(s => s.id === sectionId)!.items.find(i => i.id === itemId)!.description];
               if (typeof descIndex === 'object') {
-                 const { oldVal, newVal } = descIndex as any;
+                 const { oldVal, newVal } = descIndex as { oldVal?: string, newVal?: string };
                  if (oldVal !== undefined && newVal !== undefined) {
                     const idx = newPendingDesc.indexOf(newVal);
                     if (idx !== -1) newPendingDesc[idx] = oldVal;
@@ -857,6 +864,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
               }
               pendingItem.description = newPendingDesc;
             } else {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (pendingItem as any)[fieldType] = (targetItem as any)[fieldType];
             }
 
