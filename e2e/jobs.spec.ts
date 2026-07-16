@@ -6,7 +6,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-let TEST_USER_ID = ''; 
+let TEST_USER_ID = '';
+let TEST_EMAIL = '';
+let TEST_PASSWORD = '';
 const TEST_COMPANY_PREFIX = 'PLAYWRIGHT_TEST_COMPANY_';
 
 test.describe('Jobs Store E2E Tests', () => {
@@ -14,13 +16,19 @@ test.describe('Jobs Store E2E Tests', () => {
 
   test.beforeAll(async () => {
     // 1. Authenticate with Supabase to get the real UUID for DB seeding
+    TEST_EMAIL = process.env.E2E_TEST_EMAIL || '';
+    TEST_PASSWORD = process.env.E2E_TEST_PASSWORD || '';
+    if (!TEST_EMAIL || !TEST_PASSWORD) {
+      throw new Error('E2E_TEST_EMAIL and E2E_TEST_PASSWORD must be set in the environment to run the E2E suite.');
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: 'luv4zhan@gmail.com',
-      password: process.env.E2E_TEST_PASSWORD || 'Luv4zhan'
+      email: TEST_EMAIL,
+      password: TEST_PASSWORD
     });
-    
+
     if (error || !data.user) {
-      throw new Error(`Failed to authenticate E2E test user: ${error?.message}. Did you set E2E_TEST_PASSWORD in .env.local?`);
+      throw new Error(`Failed to authenticate E2E test user: ${error?.message}. Did you set E2E_TEST_EMAIL / E2E_TEST_PASSWORD correctly?`);
     }
     
     TEST_USER_ID = data.user.id;
@@ -53,8 +61,8 @@ test.describe('Jobs Store E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Log into the UI via Playwright
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'luv4zhan@gmail.com');
-    await page.fill('input[type="password"]', process.env.E2E_TEST_PASSWORD || 'Luv4zhan');
+    await page.fill('input[type="email"]', TEST_EMAIL);
+    await page.fill('input[type="password"]', TEST_PASSWORD);
     await page.click('button:has-text("Sign in")');
     
     // Wait for redirect to /home or explicitly go to /jobs
