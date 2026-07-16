@@ -51,6 +51,35 @@ If you are looking for a developer who can:
 
 ---
 
+## 🌍 Environments & Branching Strategy
+
+This repository follows a strict multi-environment Git workflow to ensure production stability:
+
+- **`main` (Production):** The stable branch that is automatically deployed to the live SaaS URL. Connected to the Production Supabase project. **Never commit directly to this branch.**
+- **`saas-version-staging` (Staging/Preview):** The pre-production branch. Connected to a separate, isolated Staging Supabase project. Used for testing new features, QA, and running E2E tests before they go live.
+- **Development Branches (e.g., `saas-version-initialization`, `feature/xxx`):** Short-lived branches used by developers to build new features. 
+
+### Merging Workflow
+1. Developers create a new branch from `saas-version-staging`.
+2. Work is committed locally and tested against the Staging Supabase database using `.env.local`.
+3. The feature branch is merged into `saas-version-staging` via Pull Request (or local merge).
+4. Once Staging is thoroughly tested and verified, `saas-version-staging` is merged into `main` via a production Pull Request.
+5. If there are database schema changes, the SQL migrations are manually run on the Production Supabase SQL Editor before merging to `main`.
+
+---
+
+## 🔄 Application Workflow
+
+Understanding how users interact with CV Manager:
+1. **Authentication:** Users sign up via Email/Password or Google OAuth. An OTP link is sent via email (powered by Resend SMTP).
+2. **Dashboard / Master CV:** Upon successful login, users are greeted by the home dashboard where they can create a "Master CV" from scratch or import a PDF.
+3. **Job Tracking:** Users browse to the "Jobs" tab to add a job they want to apply for.
+4. **AI Tailoring:** Users click "Tailor CV" on a specific job. The app duplicates the Master CV and securely injects the Job Description into the AI Context.
+5. **Inline Editing:** The AI analyzes the job description against the CV and generates precise, inline Diff-based suggestions. Users review, accept, or reject each bullet point.
+6. **Export:** Once perfected, the user downloads the tailored PDF and updates their Job Tracker status to "Applied".
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -78,8 +107,16 @@ E2E_TEST_PASSWORD=your_e2e_test_password
 ```
 *(Tip: You can copy `.env.example` as a template).*
 
-### 4. Database Setup
-You can find the master database schema in `supabase_schema.sql`. Run this SQL in your Supabase SQL Editor to generate the `resumes` and `jobs` tables with the correct Auth Foreign Keys, Storage buckets, and strict Row Level Security (RLS) policies.
+### 4. Supabase Setup (Database & Auth)
+
+**A. Database Schema:**
+You can find the master database schema in `supabase_schema.sql`. Run this SQL in your Supabase SQL Editor to generate the `resumes` and `jobs` tables with the correct Auth Foreign Keys, Storage buckets, strict Row Level Security (RLS) policies, and required `GRANT` privileges for the `authenticated` and `anon` roles.
+
+**B. Authentication & Email (Crucial for Staging/Local):**
+When spinning up a new Supabase environment (e.g., Staging), ensure you configure the Auth settings:
+1. **URL Configuration:** Go to Authentication > URL Configuration. Set the Site URL to your domain (or `http://localhost:3000` for local dev) and add `http://localhost:3000/**` to the Redirect URLs.
+2. **Custom SMTP:** Go to Authentication > Emails. Enable Custom SMTP and input your Resend credentials (Host: `smtp.resend.com`, Port: `465`, Username: `resend`, Password: `<your_api_key>`).
+3. **Rate Limits:** Adjust or disable email rate limits during intensive local testing to avoid delivery blocks.
 
 *(Note: If you are upgrading from an older version of this app that used the 'local-user' default instead of Supabase Auth, run `migration_phase5.sql` instead to safely backfill and migrate your data).*
 
