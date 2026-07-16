@@ -9,6 +9,7 @@ import { TailorJobModal } from "./TailorJobModal";
 import { useRouter } from "next/navigation";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useJobStore } from "@/store/useJobStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export function AnalysisPane() {
   const { 
@@ -34,12 +35,15 @@ export function AnalysisPane() {
   const [isTailorModalOpen, setIsTailorModalOpen] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const router = useRouter();
+  const { user } = useAuthStore();
   
   const { jobs, fetchJobs } = useJobStore();
 
   useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+    if (user?.id) {
+      fetchJobs(user.id);
+    }
+  }, [fetchJobs, user?.id]);
 
   const currentTailoringJob = tailoringJob ? {
     ...tailoringJob,
@@ -75,6 +79,7 @@ export function AnalysisPane() {
       const duplicatedResume = {
         ...resume,
         id: 'new', // Instructs supabaseApi.saveResume to let DB generate new UUID
+        userId: user?.id || "local-user",
         title: `${job.position} ${new Date().getFullYear()} - ${job.company}`,
         analysisResult: undefined,
         acceptedSuggestions: undefined,

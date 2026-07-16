@@ -11,19 +11,23 @@ import { CvUploadOverlay } from "@/components/CvUploadOverlay";
 import { RecentResumesList } from "@/components/RecentResumesList";
 import { DocumentSettings } from "@/types/resume";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function HomePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { setTailoringJob, resumeList, isListLoading, fetchResumeList, deleteResumeFromList } = useResumeStore();
+  const { user } = useAuthStore();
   
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadOverlayOpen, setIsUploadOverlayOpen] = useState(false);
 
   useEffect(() => {
-    fetchResumeList(true);
-  }, [fetchResumeList]);
+    if (user?.id) {
+      fetchResumeList(user.id, true);
+    }
+  }, [fetchResumeList, user?.id]);
 
   const handleCreateNew = () => {
     router.push("/editor/new");
@@ -60,7 +64,7 @@ export default function HomePage() {
 
       const newResume: Resume = {
         id: "new",
-        userId: "local-user",
+        userId: user?.id || "local-user",
         title: title,
         personalInfo: parsedData.personalInfo || { name: "", email: "", phone: "", location: "" },
         sections: parsedData.sections || [],

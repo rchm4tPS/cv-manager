@@ -29,7 +29,7 @@ export const supabaseApi = {
     return data;
   },
 
-  async getResumes(userId: string = 'local-user') {
+  async getResumes(userId: string) {
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
@@ -52,11 +52,12 @@ export const supabaseApi = {
     })) as Resume[];
   },
 
-  async getResumeById(id: string) {
+  async getResumeById(id: string, userId: string) {
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single();
 
     if (error) {
@@ -91,12 +92,12 @@ export const supabaseApi = {
 
   // --- Jobs ---
 
-  async saveJob(job: { id: string; company: string; position: string; location?: string; status: string; link?: string; dateAdded: string; dateApplied?: string; description?: string; source?: string; appliedVia?: string; salaryRange?: string; workSetup?: string }) {
+  async saveJob(job: { id: string; userId: string; company: string; position: string; location?: string; status: string; link?: string; dateAdded: string; dateApplied?: string; description?: string; source?: string; appliedVia?: string; salaryRange?: string; workSetup?: string }) {
     const { data, error } = await supabase
       .from('jobs')
       .upsert({
         id: job.id.startsWith('temp-') ? undefined : job.id,
-        user_id: 'local-user',
+        user_id: job.userId,
         company: job.company,
         position: job.position,
         location: job.location,
@@ -119,6 +120,7 @@ export const supabaseApi = {
     }
     return {
       id: data.id,
+      userId: data.user_id,
       company: data.company,
       position: data.position,
       location: data.location,
@@ -162,6 +164,7 @@ export const supabaseApi = {
     }
     return {
       id: data.id,
+      userId: data.user_id,
       company: data.company,
       position: data.position,
       location: data.location,
@@ -177,7 +180,7 @@ export const supabaseApi = {
     };
   },
 
-  async getJobs(userId: string = 'local-user') {
+  async getJobs(userId: string) {
     const { data, error } = await supabase
       .from('jobs')
       .select('*')
@@ -190,6 +193,7 @@ export const supabaseApi = {
     }
     return data.map(row => ({
       id: row.id,
+      userId: row.user_id,
       company: row.company,
       position: row.position,
       location: row.location,
@@ -219,7 +223,7 @@ export const supabaseApi = {
 
   // --- Storage ---
   
-  async uploadProfilePhoto(file: File, userId: string = 'local-user') {
+  async uploadProfilePhoto(file: File, userId: string) {
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}-${Date.now()}.${fileExt}`;
     const filePath = `avatars/${fileName}`;

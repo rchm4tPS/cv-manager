@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/lib/gemini';
+import { createClient } from '@/lib/supabase-server';
 
 export const maxDuration = 60; // Allow up to 60 seconds for the AI response
 
@@ -58,6 +59,12 @@ Instructions:
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { text } = body as { text: string };
 

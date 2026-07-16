@@ -8,6 +8,7 @@ export const JOB_WORK_SETUPS: JobWorkSetup[] = ['WFO', 'WFH', 'Hybrid'];
 
 export interface Job {
   id: string;
+  userId: string;
   company: string;
   position: string;
   location: string;

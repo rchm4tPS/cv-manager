@@ -7,8 +7,8 @@ interface JobStore {
   isLoading: boolean;
   hasLoadedInitial: boolean;
   
-  fetchJobs: (force?: boolean) => Promise<void>;
-  addJob: (jobData: Omit<Job, 'id' | 'createdAt' | 'userId'>) => Promise<Job | null>;
+  fetchJobs: (userId: string, force?: boolean) => Promise<void>;
+  addJob: (jobData: Omit<Job, 'id'>) => Promise<Job | null>;
   updateJob: (id: string, updates: Partial<Job>) => Promise<boolean>;
   deleteJobs: (ids: string[]) => Promise<boolean>;
 }
@@ -18,14 +18,14 @@ export const useJobStore = create<JobStore>((set, get) => ({
   isLoading: false,
   hasLoadedInitial: false,
 
-  fetchJobs: async (force = false) => {
+  fetchJobs: async (userId, force = false) => {
     const { hasLoadedInitial, isLoading } = get();
     if (isLoading) return;
     if (hasLoadedInitial && !force) return;
 
     if (!hasLoadedInitial) set({ isLoading: true });
     try {
-      const data = await supabaseApi.getJobs();
+      const data = await supabaseApi.getJobs(userId);
       if (data) {
         set({ jobs: data, hasLoadedInitial: true });
       }

@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabaseApi } from "@/lib/supabase-api";
 import { createPortal } from "react-dom";
 import { useJobStore } from "@/store/useJobStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 import { Job, JobSource, JobAppliedVia, JobWorkSetup, JOB_SOURCES, JOB_APPLIED_VIA, JOB_WORK_SETUPS } from "@/types/job";
 
@@ -23,6 +24,7 @@ interface AddJobModalProps {
 
 export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps) {
   const { toast } = useToast();
+  const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,10 +85,12 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
       }
       
       // Fetch existing companies for autocomplete
-      supabaseApi.getJobs().then(jobs => {
-        const companies = Array.from(new Set(jobs.map(j => j.company).filter(Boolean)));
-        setExistingCompanies(companies);
-      }).catch(console.error);
+      if (user?.id) {
+        supabaseApi.getJobs(user.id).then(jobs => {
+          const companies = Array.from(new Set(jobs.map(j => j.company).filter(Boolean)));
+          setExistingCompanies(companies);
+        }).catch(console.error);
+      }
     }
   }, [isOpen, job]);
 
@@ -105,6 +109,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
       const { dateApplied, ...restFormData } = formData;
       const jobToSave = {
         id: job ? job.id : `temp-${Date.now()}`,
+        userId: user?.id || "local-user",
         dateAdded: job ? job.dateAdded : new Date().toISOString(),
         dateApplied: dateApplied ? dateApplied.toISOString() : undefined,
         ...restFormData,

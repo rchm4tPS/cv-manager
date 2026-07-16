@@ -14,6 +14,7 @@ interface AuthState {
   signInWithGoogle: (redirectTo: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, redirectTo: string) => Promise<{ data: any, error: any }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: any }>;
+  resetPasswordForEmail: (email: string, redirectTo: string) => Promise<{ error: any }>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -32,8 +33,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         set({ session, user: session?.user ?? null, isLoading: false });
+        if (event === 'PASSWORD_RECOVERY') {
+          window.location.href = '/create-pass';
+        }
       }
     );
     
@@ -76,6 +80,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
+    });
+    set({ isLoading: false });
+    return { error };
+  },
+
+  resetPasswordForEmail: async (email, redirectTo) => {
+    set({ isLoading: true });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
     });
     set({ isLoading: false });
     return { error };

@@ -15,7 +15,7 @@ interface ResumeStore {
   updateSection: (sectionId: string, data: Partial<Section>) => void;
   deleteSection: (sectionId: string) => void;
   reorderSections: (sections: Section[]) => void;
-  initBlankResume: () => void;
+  initBlankResume: (userId: string, userMetadata?: any) => void;
   updateTitle: (title: string) => void;
   isDirty: boolean;
   setIsDirty: (dirty: boolean) => void;
@@ -62,24 +62,25 @@ interface ResumeStore {
   resumeList: Resume[];
   isListLoading: boolean;
   hasLoadedList: boolean;
-  fetchResumeList: (force?: boolean) => Promise<void>;
+  fetchResumeList: (userId: string, force?: boolean) => Promise<void>;
   deleteResumeFromList: (id: string) => Promise<boolean>;
   syncResumeToList: (resume: Resume) => void;
 }
 
-const blankResume: Resume = {
+const createBlankResume = (userId: string, userMetadata?: any): Resume => ({
   id: 'new',
-  userId: 'local-user',
+  userId: userId,
   title: 'Untitled Resume',
   personalInfo: {
-    name: '',
+    name: userMetadata?.name || userMetadata?.full_name || '',
     jobTitle: '',
-    email: '',
+    email: userMetadata?.email || '',
     phone: '',
     location: '',
     linkedin: '',
     website: '',
     github: '',
+    photoUrl: userMetadata?.avatar_url || userMetadata?.picture || undefined,
   },
   sections: [],
   settings: {
@@ -90,7 +91,7 @@ const blankResume: Resume = {
   },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-};
+});
 
 const getInitialTailoringJob = () => {
   if (typeof window !== 'undefined') {
@@ -195,7 +196,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   };
 
   return {
-  resume: blankResume,
+  resume: createBlankResume('local-user'),
   tailoringJob: getInitialTailoringJob(),
   isDirty: false,
   setIsDirty: (dirty) => set({ isDirty: dirty }),
@@ -436,8 +437,8 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       },
       isDirty: true,
     })),
-  initBlankResume: () => set({ 
-    resume: blankResume, 
+  initBlankResume: (userId: string, userMetadata?: any) => set({ 
+    resume: createBlankResume(userId, userMetadata), 
     isDirty: false, 
     pastStates: [], 
     futureStates: [],
@@ -970,14 +971,14 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   resumeList: [],
   isListLoading: false,
   hasLoadedList: false,
-  fetchResumeList: async (force = false) => {
+  fetchResumeList: async (userId, force = false) => {
     const { hasLoadedList, isListLoading } = get();
     if (isListLoading) return;
     if (hasLoadedList && !force) return;
 
     if (!hasLoadedList) set({ isListLoading: true });
     try {
-      const data = await supabaseApi.getResumes();
+      const data = await supabaseApi.getResumes(userId);
       if (data) {
         set({ resumeList: data, hasLoadedList: true });
       }

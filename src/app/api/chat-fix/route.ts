@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/lib/gemini';
+import { createClient } from '@/lib/supabase-server';
+import { Resume, ChatMessage } from '@/types/resume';
 
 export const maxDuration = 60; // Allow up to 60 seconds for the AI response
-import { Resume } from '@/types/resume';
 
 const SYSTEM_PROMPT = `You are an elite Resume AI Assistant. The user is asking you to fix or improve their CV based on AI recommendations or their own requests.
 You will receive the user's current CV data in JSON format, the current analysis step context (if any), and the conversation history.
@@ -31,6 +32,12 @@ You must return a JSON object matching this schema exactly:
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { resume, messages, stepId } = body as { 
       resume: Resume; 

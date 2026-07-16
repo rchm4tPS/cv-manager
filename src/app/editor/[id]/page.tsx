@@ -13,6 +13,7 @@ import { useResumeStore } from "@/store/useResumeStore";
 import { supabaseApi } from "@/lib/supabase-api";
 import { useRouter, useParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type TabType = "editor" | "analysis" | "settings";
 
@@ -24,19 +25,21 @@ export default function EditorPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { setResume, initBlankResume, isChatOpen, setIsChatOpen, setTailoringJob } = useResumeStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     async function loadResume() {
       if (!params.id) return;
       
       if (params.id === 'new') {
-        initBlankResume();
+        const metadata = user ? { ...user.user_metadata, email: user.email } : undefined;
+        initBlankResume(user?.id || "local-user", metadata);
         setIsLoading(false);
         return;
       }
 
       try {
-        const data = await supabaseApi.getResumeById(params.id as string);
+        const data = await supabaseApi.getResumeById(params.id as string, user?.id || "local-user");
         if (data) {
           setResume(data);
           if (data.tailoringJob) {
@@ -67,7 +70,7 @@ export default function EditorPage() {
     if (savedTab) setActiveTab(savedTab);
 
     loadResume();
-  }, [params.id, setResume, initBlankResume, router, toast, setTailoringJob]);
+  }, [params.id, setResume, initBlankResume, router, toast, setTailoringJob, user?.id]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);

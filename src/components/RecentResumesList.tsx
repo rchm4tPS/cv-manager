@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Clock, LayoutGrid, List, Sparkles, FileText, Trash2, Loader2 } from "lucide-react";
 import { Resume } from "@/types/resume";
 import { useJobStore } from "@/store/useJobStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface RecentResumesListProps {
   recentResumes: Resume[];
@@ -20,9 +21,10 @@ export const RecentResumesList: React.FC<RecentResumesListProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   
   const { jobs, fetchJobs } = useJobStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
-    fetchJobs();
+    if (user?.id) fetchJobs(user.id);
     const stored = localStorage.getItem('resumeViewMode');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored === 'table' || stored === 'grid') setViewMode(stored);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/lib/gemini';
 import { Resume } from '@/types/resume';
+import { createClient } from '@/lib/supabase-server';
 
 export const maxDuration = 60; // Allow up to 60 seconds for the AI response
 
@@ -99,6 +100,12 @@ If a section looks perfect, or if the user's CV does not contain that specific s
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { resume, tailoringJob } = body as { resume: Resume, tailoringJob?: { company: string, position: string, description: string } };
 

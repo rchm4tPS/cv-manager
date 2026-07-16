@@ -1,9 +1,9 @@
--- Run this in your Supabase SQL Editor to create the necessary tables
+-- Run this in your Supabase SQL Editor to create the necessary tables, types, and policies
 
 -- 1. Resumes Table
 CREATE TABLE resumes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id TEXT NOT NULL DEFAULT 'local-user', -- In a real app with Auth, this would reference auth.users
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   title TEXT NOT NULL DEFAULT 'Untitled Resume',
   content JSONB NOT NULL DEFAULT '{}'::jsonb, -- Stores the entire PersonalInfo, Sections, and Settings
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -13,8 +13,9 @@ CREATE TABLE resumes (
 -- Enable Row Level Security (RLS)
 ALTER TABLE resumes ENABLE ROW LEVEL SECURITY;
 
--- Create policy to allow all actions for MVP (Remove in production)
-CREATE POLICY "Allow all actions for MVP on resumes" ON resumes FOR ALL USING (true);
+-- Create policy for authenticated users
+CREATE POLICY "Users can manage their own resumes" ON resumes 
+  FOR ALL USING (auth.uid() = user_id);
 
 
 -- Enums for new job columns
@@ -25,7 +26,7 @@ CREATE TYPE job_work_setup_enum AS ENUM ('WFO', 'WFH', 'Hybrid');
 -- 2. Jobs Table (Job Tracker)
 CREATE TABLE jobs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id TEXT NOT NULL DEFAULT 'local-user',
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   company TEXT NOT NULL,
   position TEXT NOT NULL,
   location TEXT,
@@ -44,5 +45,18 @@ CREATE TABLE jobs (
 -- Enable Row Level Security (RLS)
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 
--- Create policy to allow all actions for MVP (Remove in production)
-CREATE POLICY "Allow all actions for MVP on jobs" ON jobs FOR ALL USING (true);
+-- Create policy for authenticated users
+CREATE POLICY "Users can manage their own jobs" ON jobs 
+  FOR ALL USING (auth.uid() = user_id);
+
+
+-- 3. Storage Bucket for Avatars
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('avatars', 'avatars', false) 
+ON CONFLICT (id) DO NOTHING;
+
+-- 4. Storage RLS: allow users to manage their own avatars 
+CREATE POLICY "Users can manage their own avatars" ON storage.objects
+  FOR ALL 
+  USING (bucket_id = 'avatars' AND name LIKE 'avatars/' || auth.uid()::text || '-%')
+  WITH CHECK (bucket_id = 'avatars' AND name LIKE 'avatars/' || auth.uid()::text || '-%');

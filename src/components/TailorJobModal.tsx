@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { AddJobModal } from "./AddJobModal";
 
 import { Job } from "@/types/job";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface TailorJobModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function TailorJobModal({ isOpen, onClose, onSelectJob, isDuplicating }: 
   const [loading, setLoading] = useState(true);
   const [tailoredResumesByJob, setTailoredResumesByJob] = useState<Record<string, string[]>>({});
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
+  const { user } = useAuthStore();
 
   const [mounted, setMounted] = useState(false);
 
@@ -31,10 +33,11 @@ export function TailorJobModal({ isOpen, onClose, onSelectJob, isDuplicating }: 
   }, []);
 
   const fetchJobsAndResumes = () => {
+    if (!user?.id) return;
     setLoading(true);
     Promise.all([
-      supabaseApi.getJobs(),
-      supabaseApi.getResumes()
+      supabaseApi.getJobs(user.id),
+      supabaseApi.getResumes(user.id)
     ]).then(([jobsData, resumesData]) => {
       setJobs(jobsData);
       
@@ -56,11 +59,11 @@ export function TailorJobModal({ isOpen, onClose, onSelectJob, isDuplicating }: 
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && user?.id) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchJobsAndResumes();
     }
-  }, [isOpen]);
+  }, [isOpen, user?.id]);
 
   if (!isOpen || !mounted) return null;
 

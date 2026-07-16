@@ -34,6 +34,7 @@ If you are looking for a developer who can:
 - 📄 **PDF Parsing (coming soon):** Upload existing resumes (PDFs) and automatically parse the data into editable digital formats.
 - 💼 **Job Application Tracker:** A built-in CRM for your job hunt. Track positions, companies, statuses (Applied, Interviewing, Offered), and link them directly to specific resume versions. Keep track of extended job details including **job source**, **application medium**, **salary ranges**, and **work setup (WFO/WFH)** with convenient inline editing capabilities directly from the table. Easily find what you need with an advanced **Search & Filter Bar** that supports text search, **checklist-based status filtering**, and filtering by date applied, source, and work setup. Adding new jobs is faster with a **smart company autocomplete** that suggests previously entered organizations.
 - ⚡ **Serverless Backend Architecture:** Powered by Supabase for instantaneous, secure data syncing across devices using Row Level Security (RLS).
+- 🔒 **True Multi-Tenant SaaS:** Complete user authentication (Google OAuth & Email/Password) with strict data isolation. Your resumes, job tracking data, and profile pictures are fully protected using server-side session checks and Supabase Row Level Security (RLS).
 
 ## 🛠️ Tech Stack
 
@@ -73,7 +74,9 @@ GEMINI_API_KEY=your_gemini_api_key
 ```
 
 ### 4. Database Setup
-You can find the database schema in `supabase_schema.sql`. Run this SQL in your Supabase SQL Editor to generate the `resumes` and `jobs` tables with the correct schemas.
+You can find the master database schema in `supabase_schema.sql`. Run this SQL in your Supabase SQL Editor to generate the `resumes` and `jobs` tables with the correct Auth Foreign Keys, Storage buckets, and strict Row Level Security (RLS) policies.
+
+*(Note: If you are upgrading from an older version of this app that used the 'local-user' default instead of Supabase Auth, run `migration_phase5.sql` instead to safely backfill and migrate your data).*
 
 ### 5. Run the Development Server
 ```bash

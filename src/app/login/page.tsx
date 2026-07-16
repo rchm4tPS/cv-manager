@@ -14,7 +14,26 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   
   const router = useRouter()
-  const { signInWithGoogle, signUpWithEmail, signInWithEmail } = useAuthStore()
+  const { signInWithGoogle, signUpWithEmail, signInWithEmail, resetPasswordForEmail } = useAuthStore()
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Please enter your email address first to reset your password.")
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setSuccessMsg(null)
+    try {
+      const { error } = await resetPasswordForEmail(email, `${window.location.origin}/auth/callback?next=/create-pass`)
+      if (error) throw error
+      setSuccessMsg('Password reset link sent! Check your email.')
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,6 +112,20 @@ export default function LoginPage() {
               />
             </div>
           </div>
+          
+          {!isSignUp && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="font-medium text-blue-600 hover:text-blue-500"
+                >
+                  Forgot your password?
+                </button>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 rounded text-sm bg-red-50 text-red-600">
