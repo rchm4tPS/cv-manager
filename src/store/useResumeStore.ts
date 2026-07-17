@@ -517,8 +517,24 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       });
     }
 
+    // Sync status back to analysisResult so it gets saved
+    let newAnalysisResult = updatedResume.analysisResult;
+    if (state.activeSuggestionIdForChat && newAnalysisResult && newAnalysisResult.steps) {
+      newAnalysisResult = {
+        ...newAnalysisResult,
+        steps: newAnalysisResult.steps.map(step => ({
+          ...step,
+          recommendations: step.recommendations.map(rec => 
+            rec.suggestionId === state.activeSuggestionIdForChat ? { ...rec, status: (state.partialDecisions.rejected > 0 ? 'partially_accepted' : 'accepted') } : rec
+          )
+        }))
+      };
+      updatedResume = { ...updatedResume, analysisResult: newAnalysisResult };
+    }
+
     return {
       resume: updatedResume,
+      analysisResult: newAnalysisResult,
       pendingChanges: null,
       showOriginal: false,
       editorSuggestions: updatedSuggestions,
@@ -576,8 +592,24 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       });
     }
 
+    // Sync status back to analysisResult so it gets saved
+    let newAnalysisResult = updatedResume.analysisResult;
+    if (state.activeSuggestionIdForChat && newAnalysisResult && newAnalysisResult.steps) {
+      newAnalysisResult = {
+        ...newAnalysisResult,
+        steps: newAnalysisResult.steps.map(step => ({
+          ...step,
+          recommendations: step.recommendations.map(rec => 
+            rec.suggestionId === state.activeSuggestionIdForChat ? { ...rec, status: (state.partialDecisions.accepted > 0 ? 'partially_accepted' : 'rejected') } : rec
+          )
+        }))
+      };
+      updatedResume = { ...updatedResume, analysisResult: newAnalysisResult };
+    }
+
     return {
       resume: updatedResume,
+      analysisResult: newAnalysisResult,
       pendingChanges: null,
       showOriginal: false,
       editorSuggestions: updatedSuggestions,
@@ -782,8 +814,24 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       });
     }
 
+    let newAnalysisResult = newResume.analysisResult;
+    if (isComplete && state.activeSuggestionIdForChat && newAnalysisResult && newAnalysisResult.steps) {
+      const finalStatus = state.partialDecisions.rejected === 0 ? 'accepted' : 'partially_accepted';
+      newAnalysisResult = {
+        ...newAnalysisResult,
+        steps: newAnalysisResult.steps.map(step => ({
+          ...step,
+          recommendations: step.recommendations.map(rec => 
+            rec.suggestionId === state.activeSuggestionIdForChat ? { ...rec, status: finalStatus } : rec
+          )
+        }))
+      };
+      newResume.analysisResult = newAnalysisResult;
+    }
+
     return {
       resume: newResume,
+      analysisResult: newAnalysisResult,
       pendingChanges: isComplete ? null : newPendingChanges,
       partialDecisions,
       ...(isComplete ? { chatMessages: updatedChatMessages, activeSuggestionIdForChat: null, editorSuggestions: updatedSuggestions } : {}),
@@ -973,10 +1021,26 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       });
     }
 
+    let newAnalysisResult = state.resume.analysisResult;
+    if (isComplete && state.activeSuggestionIdForChat && newAnalysisResult && newAnalysisResult.steps) {
+      const finalStatus = state.partialDecisions.accepted === 0 ? 'rejected' : 'partially_accepted';
+      newAnalysisResult = {
+        ...newAnalysisResult,
+        steps: newAnalysisResult.steps.map(step => ({
+          ...step,
+          recommendations: step.recommendations.map(rec => 
+            rec.suggestionId === state.activeSuggestionIdForChat ? { ...rec, status: finalStatus } : rec
+          )
+        }))
+      };
+    }
+
     return {
+      ...(isComplete && newAnalysisResult ? { resume: { ...state.resume, analysisResult: newAnalysisResult }, analysisResult: newAnalysisResult } : {}),
       pendingChanges: isComplete ? null : newPendingChanges,
       partialDecisions,
-      ...(isComplete ? { chatMessages: updatedChatMessages, activeSuggestionIdForChat: null, editorSuggestions: updatedSuggestions } : {})
+      ...(isComplete ? { chatMessages: updatedChatMessages, activeSuggestionIdForChat: null, editorSuggestions: updatedSuggestions } : {}),
+      isDirty: isComplete
     };
     });
     const state = get();

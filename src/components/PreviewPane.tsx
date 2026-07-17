@@ -761,7 +761,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
           <div 
             key={`item-${item.id}`} 
             data-measure-id={`item-${item.id}`} 
-            className={`${isItemDeleted || isNewItem ? 'group/diff' : ''} relative transition-colors duration-300 ${draggedItem?.sectionId === section.id && draggedItem?.index === index ? 'opacity-50 bg-slate-50/50 outline-dashed outline-2 outline-blue-400 rounded-sm outline-offset-4' : ''} ${itemHighlightClass}`}
+            className={`group ${isItemDeleted || isNewItem ? 'group/diff' : ''} relative transition-colors duration-300 ${draggedItem?.sectionId === section.id && draggedItem?.index === index ? 'opacity-50 bg-slate-50/50 outline-dashed outline-2 outline-blue-400 rounded-sm outline-offset-4' : ''} ${itemHighlightClass}`}
             draggable={draggableItem === item.id}
             onDragStart={(e) => handleDragStart(e, section.id, index)}
             onDragEnter={(e) => handleDragEnter(e, section.id, index)}
