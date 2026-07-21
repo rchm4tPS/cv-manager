@@ -16,7 +16,7 @@ const SECTION_ICONS: Record<string, React.FC<any>> = {
 };
 
 function ReorderSections() {
-  const { resume, reorderSections, updateSection } = useResumeStore();
+  const { resume, reorderSections, updateSection, pendingChanges } = useResumeStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [isMounted, setIsMounted] = useState(false);
@@ -29,6 +29,10 @@ function ReorderSections() {
   const sortedSections = [...resume.sections].sort((a, b) => a.order - b.order);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
+    if (pendingChanges) {
+      e.preventDefault();
+      return;
+    }
     setDraggedId(id);
     e.dataTransfer.effectAllowed = "move";
   };
@@ -40,7 +44,7 @@ function ReorderSections() {
     const sourceIdx = sortedSections.findIndex(s => s.id === draggedId);
     const targetIdx = sortedSections.findIndex(s => s.id === targetId);
 
-    const newSections = [...sortedSections];
+    const newSections = sortedSections.map(s => ({ ...s }));
     const item = newSections.splice(sourceIdx, 1)[0];
     newSections.splice(targetIdx, 0, item);
 
@@ -72,8 +76,9 @@ function ReorderSections() {
   if (!isMounted) return null;
 
   return (
-    <div className="space-y-4 mb-10">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="relative space-y-4 mb-10">
+      <div className={pendingChanges ? "opacity-50 pointer-events-none select-none" : ""}>
+        <div className="flex items-center gap-2 mb-2">
         <GripVertical className="w-4 h-4 text-blue-600" />
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Reorder Sections</h2>
       </div>
@@ -97,7 +102,7 @@ function ReorderSections() {
           return (
             <div
               key={section.id}
-              draggable
+              draggable={!pendingChanges}
               onDragStart={(e) => handleDragStart(e, section.id)}
               onDragEnter={(e) => handleDragEnter(e, section.id)}
               onDragOver={handleDragOver}
@@ -106,7 +111,7 @@ function ReorderSections() {
                 }`}
             >
               <div className="p-1 -ml-1">
-                <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-slate-400 transition-colors" />
+                {!pendingChanges && <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-slate-400 transition-colors" />}
               </div>
               <Icon className="w-4 h-4 text-blue-600" />
 
@@ -138,18 +143,27 @@ function ReorderSections() {
         })}
       </div>
     </div>
+      {pendingChanges && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/20 backdrop-blur-[1px] pointer-events-auto">
+          <div className="bg-white/95 backdrop-blur shadow-2xl border-2 border-blue-200 rounded-xl p-4 text-center max-w-[250px] shadow-blue-500/20 animate-in fade-in zoom-in duration-300">
+            <h3 className="text-sm font-bold text-slate-800 mb-1">Review AI Suggestions</h3>
+            <p className="text-[10px] text-slate-600">Please accept or discard suggestions first.</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
 const inputClass = "w-full h-9 rounded-md border border-slate-200 bg-white shadow-sm px-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
 
 export function SettingsPane() {
-  const { resume, updateSettings } = useResumeStore();
+  const { resume, updateSettings, pendingChanges } = useResumeStore();
   const settings = resume.settings;
   const typography = settings.typography;
 
   return (
-    <aside className="w-full h-full bg-muted/30 p-6 overflow-y-auto space-y-8">
+    <aside className="w-full h-full min-h-0 bg-muted/5 p-8 overflow-y-auto space-y-8">
       <ReorderSections />
 
       <div className="pt-4 border-t space-y-4">

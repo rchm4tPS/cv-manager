@@ -7,7 +7,7 @@ export const supabaseApi = {
   
   async saveResume(resume: Resume) {
     // Destructure to separate top-level fields from the JSON payload
-    const { id, title, userId, ...content } = resume;
+    const { id, title, userId, createdAt, updatedAt, ...content } = resume;
     
     // We do an upsert so it creates if new, updates if exists
     const { data, error } = await supabase
@@ -42,14 +42,17 @@ export const supabaseApi = {
     }
     
     // Map back to our Resume type
-    return data.map(row => ({
-      id: row.id,
-      userId: row.user_id,
-      title: row.title,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      ...row.content // Spreads personalInfo, sections, settings
-    })) as Resume[];
+    return data.map(row => {
+      const { createdAt, updatedAt, id: contentId, userId: contentUserId, title: contentTitle, ...cleanContent } = row.content || {};
+      return {
+        id: row.id,
+        userId: row.user_id,
+        title: row.title,
+        ...cleanContent,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    }) as Resume[];
   },
 
   async getResumeById(id: string, userId: string) {
@@ -67,13 +70,15 @@ export const supabaseApi = {
     
     if (!data) return null;
 
+    const { createdAt, updatedAt, id: contentId, userId: contentUserId, title: contentTitle, ...cleanContent } = data.content || {};
+
     return {
       id: data.id,
       userId: data.user_id,
       title: data.title,
+      ...cleanContent,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
-      ...data.content
     } as Resume;
   },
 

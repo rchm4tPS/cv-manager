@@ -106,21 +106,24 @@ DO NOT default to Indonesian. Evaluate the text! If the bullet points are in Eng
         if (modifiedSection) {
           if (modifiedSection._deleted) return null; // Explicitly deleted
           
-          let finalItems = originalSection.items.map(originalItem => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const modifiedItem = modifiedSection.items?.find((i: any) => i.id === originalItem.id);
-            if (modifiedItem) {
-              if (modifiedItem._deleted) return null; // Explicitly deleted
-              return { ...originalItem, ...modifiedItem };
-            }
-            // If AI omitted the item, preserve it
-            return originalItem;
-          }).filter(Boolean);
-          
-          // Append any NEW items the AI added
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const newItems = modifiedSection.items?.filter((i: any) => !originalSection.items.some((oi: any) => oi.id === i.id)) || [];
-          finalItems = [...finalItems, ...newItems];
+          let finalItems: any[] = [];
+          if (modifiedSection.items && Array.isArray(modifiedSection.items)) {
+            finalItems = modifiedSection.items.map((modifiedItem: any) => {
+              const originalItem = originalSection.items.find((i: any) => i.id === modifiedItem.id);
+              if (originalItem) {
+                if (modifiedItem._deleted) return null;
+                return { ...originalItem, ...modifiedItem };
+              }
+              return modifiedItem;
+            }).filter(Boolean);
+            
+            const omittedItems = originalSection.items.filter((originalItem: any) => {
+              return !modifiedSection.items.some((i: any) => i.id === originalItem.id);
+            });
+            finalItems = [...finalItems, ...omittedItems];
+          } else {
+            finalItems = [...originalSection.items];
+          }
 
           return { ...originalSection, ...modifiedSection, items: finalItems };
         }

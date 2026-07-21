@@ -1252,7 +1252,7 @@ export function EditorPane() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["personal", "summary", "experience", "education", "projects"]));
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const { resume, addSection, deleteSection } = useResumeStore();
+  const { resume, addSection, deleteSection, pendingChanges } = useResumeStore();
 
   useEffect(() => {
     // eslint-disable-next-line
@@ -1334,7 +1334,8 @@ export function EditorPane() {
   };
 
   return (
-    <aside className="w-full h-full min-h-0 bg-muted/5 p-8 overflow-y-auto space-y-4">
+    <div className="relative w-full h-full">
+      <aside className={`w-full h-full min-h-0 bg-muted/5 p-8 overflow-y-auto space-y-4 ${pendingChanges ? 'pointer-events-none opacity-50 overflow-hidden select-none' : ''}`}>
       
       {/* Personal Info Accordion */}
       <div className="bg-background border rounded-lg shadow-sm overflow-hidden">
@@ -1447,5 +1448,14 @@ export function EditorPane() {
       )}
 
     </aside>
+    {pendingChanges && (
+      <div className="absolute inset-0 z-50 flex flex-col items-center pt-[20%] bg-white/20 backdrop-blur-[1px] pointer-events-auto">
+        <div className="bg-white/95 backdrop-blur shadow-2xl border-2 border-blue-200 rounded-xl p-6 text-center max-w-xs shadow-blue-500/20 animate-in fade-in zoom-in duration-300">
+          <h3 className="text-base font-bold text-slate-800 mb-2">Review AI Suggestions</h3>
+          <p className="text-xs text-slate-600">Please accept or discard pending AI suggestions before making manual edits.</p>
+        </div>
+      </div>
+    )}
+    </div>
   );
 }

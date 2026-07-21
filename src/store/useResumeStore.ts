@@ -47,8 +47,8 @@ interface ResumeStore {
   discardPendingChanges: () => void;
   acceptAiChanges: () => void;
   discardAiChanges: () => void;
-  acceptPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item'|'new_section'|'new_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
-  rejectPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item'|'new_section'|'new_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
+  acceptPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item'|'new_section'|'new_item'|'moved_section'|'moved_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
+  rejectPartialChange: (sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item'|'new_section'|'new_item'|'moved_section'|'moved_item', descIndex?: DescIndex) => { isComplete: boolean, finalStatus?: string } | void;
   partialDecisions: { accepted: number; rejected: number };
   // AI Suggestions Checklist
   editorSuggestions: EditorSuggestion[];
@@ -135,15 +135,25 @@ function hasPendingChangesRemaining(resume: Resume, pendingChanges: Partial<Resu
    }
 
    if (pendingChanges.sections) {
+      const pendingSections = pendingChanges.sections;
+      const originalCommonSections = resume.sections.filter(s => pendingSections.some(p => p.id === s.id)).sort((a, b) => a.order - b.order);
+      const pendingCommonSections = pendingSections.filter(p => resume.sections.some(s => s.id === p.id)).sort((a, b) => a.order - b.order);
+      const hasOrderMismatches = originalCommonSections.some((s, idx) => s.id !== pendingCommonSections[idx].id);
+      if (hasOrderMismatches) return true;
+
       for (const rs of resume.sections) {
          const ps = pendingChanges.sections.find(s => s.id === rs.id);
          if (!ps) return true;
          
          if (ps.title !== undefined && ps.title !== rs.title) return true;
 
-         for (const ri of rs.items) {
-            const pi = ps.items.find(i => i.id === ri.id);
+         for (let i = 0; i < rs.items.length; i++) {
+            const ri = rs.items[i];
+            const pi = ps.items.find(x => x.id === ri.id);
             if (!pi) return true;
+            
+            const piIndex = ps.items.findIndex(x => x.id === ri.id);
+            if (piIndex !== i) return true;
             
             if (pi.title !== undefined && pi.title !== ri.title) return true;
             if (pi.subtitle !== undefined && pi.subtitle !== ri.subtitle) return true;
@@ -657,6 +667,48 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
         newResume.sections = newSections;
         changeApplied = true;
       }
+    } else if (fieldType === 'moved_section') {
+      const targetSectionIdx = newSections.findIndex(s => s.id === sectionId);
+      const pendingSectionIdx = newPendingSections.findIndex(s => s.id === sectionId);
+      if (targetSectionIdx !== -1 && pendingSectionIdx !== -1) {
+         const sectionToMove = { ...newSections.splice(targetSectionIdx, 1)[0] };
+         
+         const oldOrder = sectionToMove.order;
+         const newOrder = newPendingSections[pendingSectionIdx].order;
+         sectionToMove.order = newOrder;
+         
+         for (let i = 0; i < newSections.length; i++) {
+           const s = newSections[i];
+           if (oldOrder < newOrder && s.order > oldOrder && s.order <= newOrder) {
+             newSections[i] = { ...s, order: s.order - 1 };
+           } else if (oldOrder > newOrder && s.order >= newOrder && s.order < oldOrder) {
+             newSections[i] = { ...s, order: s.order + 1 };
+           }
+         }
+         
+         newSections.splice(pendingSectionIdx, 0, sectionToMove);
+         
+         newResume.sections = newSections;
+         changeApplied = true;
+      }
+    } else if (fieldType === 'moved_item') {
+      const targetSectionIdx = newSections.findIndex(s => s.id === sectionId);
+      const pendingSectionIdx = newPendingSections.findIndex(s => s.id === sectionId);
+      if (targetSectionIdx !== -1 && pendingSectionIdx !== -1) {
+         const newSection = { ...newSections[targetSectionIdx] };
+         const pendingSection = { ...newPendingSections[pendingSectionIdx] };
+         const targetItemIdx = newSection.items.findIndex(i => i.id === itemId);
+         const pendingItemIdx = pendingSection.items.findIndex(i => i.id === itemId);
+         if (targetItemIdx !== -1 && pendingItemIdx !== -1) {
+            const newItems = [...newSection.items];
+            const itemToMove = newItems.splice(targetItemIdx, 1)[0];
+            newItems.splice(pendingItemIdx, 0, itemToMove);
+            newSection.items = newItems;
+            newSections[targetSectionIdx] = newSection;
+            newResume.sections = newSections;
+            changeApplied = true;
+         }
+      }
     } else if (fieldType === 'new_section') {
       const pendingSection = newPendingSections.find(s => s.id === sectionId);
       if (pendingSection) {
@@ -793,6 +845,17 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
            const suggestionText = msg.thought || msg.text;
            if (suggestionText && !suggestionText.includes("Hi there! I can help you improve your resume")) {
              if (!updatedLatestAiMsg) {
+               if (finalStatus === 'accepted') {
+                 const accepted = newResume.acceptedSuggestions || [];
+                 if (!accepted.includes(suggestionText)) {
+                   newResume.acceptedSuggestions = [...accepted, suggestionText];
+                 }
+               } else {
+                 const partials = newResume.partiallyAcceptedSuggestions || [];
+                 if (!partials.includes(suggestionText)) {
+                   newResume.partiallyAcceptedSuggestions = [...partials, suggestionText];
+                 }
+               }
                updatedChatMessages[i] = { ...msg, status: finalStatus };
                updatedLatestAiMsg = true;
              }
@@ -883,6 +946,48 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
         newPendingChanges.sections = newPendingSections;
         changeApplied = true;
       }
+    } else if (fieldType === 'moved_section') {
+       const targetSectionIdx = state.resume.sections.findIndex(s => s.id === sectionId);
+       const pendingSectionIdx = newPendingSections.findIndex(s => s.id === sectionId);
+       if (targetSectionIdx !== -1 && pendingSectionIdx !== -1) {
+          const sectionToMove = { ...newPendingSections.splice(pendingSectionIdx, 1)[0] };
+          
+          const oldOrder = sectionToMove.order;
+          const newOrder = state.resume.sections[targetSectionIdx].order;
+          sectionToMove.order = newOrder;
+          
+          for (let i = 0; i < newPendingSections.length; i++) {
+            const s = newPendingSections[i];
+            if (oldOrder < newOrder && s.order > oldOrder && s.order <= newOrder) {
+              newPendingSections[i] = { ...s, order: s.order - 1 };
+            } else if (oldOrder > newOrder && s.order >= newOrder && s.order < oldOrder) {
+              newPendingSections[i] = { ...s, order: s.order + 1 };
+            }
+          }
+          
+          newPendingSections.splice(targetSectionIdx, 0, sectionToMove);
+          
+          newPendingChanges.sections = newPendingSections;
+          changeApplied = true;
+       }
+    } else if (fieldType === 'moved_item') {
+       const targetSectionIdx = state.resume.sections.findIndex(s => s.id === sectionId);
+       const pendingSectionIdx = newPendingSections.findIndex(s => s.id === sectionId);
+       if (targetSectionIdx !== -1 && pendingSectionIdx !== -1) {
+          const originalSection = state.resume.sections[targetSectionIdx];
+          const pendingSection = { ...newPendingSections[pendingSectionIdx] };
+          const targetItemIdx = originalSection.items.findIndex(i => i.id === itemId);
+          const pendingItemIdx = pendingSection.items.findIndex(i => i.id === itemId);
+          if (targetItemIdx !== -1 && pendingItemIdx !== -1) {
+             const pendingItems = [...pendingSection.items];
+             const itemToMove = pendingItems.splice(pendingItemIdx, 1)[0];
+             pendingItems.splice(targetItemIdx, 0, itemToMove);
+             pendingSection.items = pendingItems;
+             newPendingSections[pendingSectionIdx] = pendingSection;
+             newPendingChanges.sections = newPendingSections;
+             changeApplied = true;
+          }
+       }
     } else if (fieldType === 'new_item') {
       const pendingSectionIdx = newPendingSections.findIndex(s => s.id === sectionId);
       if (pendingSectionIdx !== -1) {
@@ -953,10 +1058,10 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
                  }
               } else {
                  if (descIndex < resumeDesc.length) {
-                   newPendingDesc[descIndex as number] = resumeDesc[descIndex as number];
-                 } else {
-                   newPendingDesc.splice(descIndex as number, 1);
-                 }
+                  newPendingDesc[descIndex as number] = resumeDesc[descIndex as number];
+                } else {
+                  newPendingDesc.splice(descIndex as number, 1);
+                }
               }
               pendingItem.description = newPendingDesc;
             } else {
@@ -980,6 +1085,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
     
     let updatedChatMessages = state.chatMessages;
     let partialDecisions = { ...state.partialDecisions, rejected: state.partialDecisions.rejected + 1 };
+    let updatedResume = { ...state.resume };
     
     if (isComplete) {
        updatedChatMessages = [...state.chatMessages];
@@ -1000,6 +1106,17 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
            const suggestionText = msg.thought || msg.text;
            if (suggestionText && !suggestionText.includes("Hi there! I can help you improve your resume")) {
              if (!updatedLatestAiMsg) {
+               if (finalStatus === 'rejected') {
+                 const rejected = updatedResume.rejectedSuggestions || [];
+                 if (!rejected.includes(suggestionText)) {
+                   updatedResume.rejectedSuggestions = [...rejected, suggestionText];
+                 }
+               } else {
+                 const partials = updatedResume.partiallyAcceptedSuggestions || [];
+                 if (!partials.includes(suggestionText)) {
+                   updatedResume.partiallyAcceptedSuggestions = [...partials, suggestionText];
+                 }
+               }
                updatedChatMessages[i] = { ...msg, status: finalStatus };
                updatedLatestAiMsg = true;
              }
@@ -1021,22 +1138,25 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       });
     }
 
-    let newAnalysisResult = state.resume.analysisResult;
+    let newAnalysisResult = updatedResume?.analysisResult || state.resume.analysisResult;
     if (isComplete && state.activeSuggestionIdForChat && newAnalysisResult && newAnalysisResult.steps) {
       const finalStatus = state.partialDecisions.accepted === 0 ? 'rejected' : 'partially_accepted';
       newAnalysisResult = {
         ...newAnalysisResult,
-        steps: newAnalysisResult.steps.map(step => ({
+        steps: newAnalysisResult.steps.map((step: any) => ({
           ...step,
-          recommendations: step.recommendations.map(rec => 
+          recommendations: step.recommendations.map((rec: any) => 
             rec.suggestionId === state.activeSuggestionIdForChat ? { ...rec, status: finalStatus } : rec
           )
         }))
       };
+      if (updatedResume) {
+        updatedResume.analysisResult = newAnalysisResult;
+      }
     }
 
     return {
-      ...(isComplete && newAnalysisResult ? { resume: { ...state.resume, analysisResult: newAnalysisResult }, analysisResult: newAnalysisResult } : {}),
+      ...(isComplete ? { resume: updatedResume, analysisResult: newAnalysisResult } : {}),
       pendingChanges: isComplete ? null : newPendingChanges,
       partialDecisions,
       ...(isComplete ? { chatMessages: updatedChatMessages, activeSuggestionIdForChat: null, editorSuggestions: updatedSuggestions } : {}),

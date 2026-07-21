@@ -198,7 +198,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   const [zoom, setZoom] = useState(1);
   const [isSpacingMode, setIsSpacingMode] = useState(false);
   
-  const ActionButtons = ({ sectionId, itemId, fieldType, descIndex, descInfo, isInline }: { sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item'|'new_section'|'new_item', descIndex?: number, descInfo?: any, isInline?: boolean }) => {
+  const ActionButtons = ({ sectionId, itemId, fieldType, descIndex, descInfo, isInline }: { sectionId: string, itemId: string, fieldType: 'title'|'subtitle'|'location'|'startDate'|'endDate'|'description'|'deleted_section'|'deleted_item'|'new_section'|'new_item'|'moved_section'|'moved_item', descIndex?: number, descInfo?: any, isInline?: boolean }) => {
     const onAccept = () => {
       const res = acceptPartialChange(sectionId, itemId, fieldType, descInfo || descIndex);
       if (res?.isComplete) {
@@ -333,6 +333,10 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
   const [draggableItem, setDraggableItem] = useState<string | null>(null);
 
   const handleDragStart = (e: React.DragEvent, sectionId: string, index: number) => {
+    if (pendingChanges) {
+      e.preventDefault();
+      return;
+    }
     setDraggedItem({ sectionId, index });
     e.dataTransfer.effectAllowed = "move";
   };
@@ -421,26 +425,55 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     if (!pendingChanges.sections) {
       diffSections = resume.sections;
     } else {
-      resume.sections.forEach(originalSection => {
-         const modifiedSection = pendingChanges.sections?.find(s => s.id === originalSection.id);
-         if (!modifiedSection) {
-            diffSections.push({ ...originalSection, _isDeleted: true });
+      const pendingSections = pendingChanges.sections;
+      const originalCommonSections = resume.sections.filter(s => pendingSections.some(p => p.id === s.id)).sort((a, b) => a.order - b.order);
+      const pendingCommonSections = pendingSections.filter(p => resume.sections.some(s => s.id === p.id)).sort((a, b) => a.order - b.order);
+
+      pendingSections.forEach((modifiedSection, sIdx) => {
+         const originalSection = resume.sections.find(s => s.id === modifiedSection.id);
+         
+         const origSectionCommonIdx = originalCommonSections.findIndex(s => s.id === modifiedSection.id);
+         const pendSectionCommonIdx = pendingCommonSections.findIndex(s => s.id === modifiedSection.id);
+         const isSectionMoved = origSectionCommonIdx !== -1 && pendSectionCommonIdx !== -1 && origSectionCommonIdx !== pendSectionCommonIdx;
+
+         if (!originalSection) {
+            diffSections.push({ ...modifiedSection, _isNew: true });
          } else {
-            const allItems: any[] = [];
-            originalSection.items.forEach(originalItem => {
-               const modifiedItem = modifiedSection.items?.find(i => i.id === originalItem.id);
-               if (!modifiedItem && modifiedSection.items) {
-                  allItems.push({ ...originalItem, _isDeleted: true });
-               } else if (modifiedItem) {
-                  allItems.push(modifiedItem);
+            const diffItems: any[] = [];
+            const pendingItems = modifiedSection.items || [];
+            
+            const originalCommonItems = originalSection.items.filter(i => pendingItems.some(p => p.id === i.id));
+            const pendingCommonItems = pendingItems.filter(p => originalSection.items.some(o => o.id === p.id));
+            
+            pendingItems.forEach((modifiedItem, iIdx) => {
+               const originalItem = originalSection.items.find(i => i.id === modifiedItem.id);
+               
+               const origItemCommonIdx = originalCommonItems.findIndex(i => i.id === modifiedItem.id);
+               const pendItemCommonIdx = pendingCommonItems.findIndex(i => i.id === modifiedItem.id);
+               const isItemMoved = origItemCommonIdx !== -1 && pendItemCommonIdx !== -1 && origItemCommonIdx !== pendItemCommonIdx;
+               
+               if (!originalItem) {
+                  diffItems.push({ ...modifiedItem, _isNew: true });
+               } else {
+                  diffItems.push({ ...modifiedItem, _isMoved: isItemMoved });
                }
             });
-            const newItems = modifiedSection.items?.filter(i => !originalSection.items.some(oi => oi.id === i.id)) || [];
-            diffSections.push({ ...modifiedSection, items: [...allItems, ...newItems] });
+            
+            originalSection.items.forEach((originalItem, oIdx) => {
+               if (!pendingItems.some(i => i.id === originalItem.id)) {
+                  diffItems.splice(oIdx, 0, { ...originalItem, _isDeleted: true });
+               }
+            });
+            
+            diffSections.push({ ...modifiedSection, items: diffItems, _isMoved: isSectionMoved });
          }
       });
-      const newSections = pendingChanges.sections?.filter(s => !resume.sections.some(os => os.id === s.id)) || [];
-      diffSections.push(...newSections);
+      
+      resume.sections.forEach((originalSection, oIdx) => {
+         if (!pendingSections.some(s => s.id === originalSection.id)) {
+            diffSections.splice(oIdx, 0, { ...originalSection, _isDeleted: true });
+         }
+      });
     }
   } else {
     diffSections = displayResume.sections;
@@ -605,7 +638,13 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     });
   }
 
-  const sortedSections = [...diffSections].sort((a, b) => a.order - b.order);
+  const sortedSections = [...diffSections].sort((a, b) => {
+    const originalA = resume.sections.find(s => s.id === a.id);
+    const originalB = resume.sections.find(s => s.id === b.id);
+    const orderA = originalA ? originalA.order : a.order;
+    const orderB = originalB ? originalB.order : b.order;
+    return orderA - orderB;
+  });
   let isFirstSection = true;
   sortedSections.forEach(section => {
     if (section.items.length === 0) return;
@@ -615,7 +654,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     const isSectionChanged = pendingChanges?.sections && 
       JSON.stringify(section) !== JSON.stringify(originalSection);
     // We only use sectionHighlightClass for summary since it's a single item block
-    const sectionHighlightClass = isSectionChanged ? 'bg-green-100/50 outline outline-1 outline-green-400 rounded-md p-1 transition-all' : '';
+    const sectionHighlightClass = isSectionChanged ? 'group/diff bg-green-100/50 outline outline-1 outline-green-400 rounded-md p-1 transition-all relative' : 'group/diff relative';
 
     if (!isFirstSection) {
       elements.push({
@@ -629,11 +668,20 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
       });
     }
 
+    const pendingSection = pendingChanges?.sections?.find(s => s.id === section.id);
+    const targetOrder = pendingSection ? pendingSection.order + 1 : null;
+    const isMoved = section._isMoved;
+
     elements.push({
-      id: `section-title-${section.id}`,
-      type: 'section-title',
+      id: `section-${section.id}`,
+      type: 'section',
       content: (
-        <div key={`section-title-wrapper-${section.id}`} data-measure-id={`section-title-${section.id}`} className="group/diff relative">
+        <div key={`section-wrapper-${section.id}`} data-measure-id={`section-${section.id}`} className="group/diff relative">
+          {isMoved && targetOrder !== null && (
+            <div className="absolute -top-3 right-0 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm z-10 animate-in fade-in slide-in-from-top-1">
+              AI: Move to #{targetOrder}
+            </div>
+          )}
           {(() => {
             if (isSectionDeleted) {
                return (
@@ -660,10 +708,23 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
               );
             }
             const isNewSection = pendingChanges?.sections && !originalSection && !isSectionDeleted;
+            const isMovedSection = section._isMoved;
             if (isNewSection) {
               return (
                 <>
                   <ActionButtons sectionId={section.id} itemId="" fieldType="new_section" />
+                  <h2 className="font-bold uppercase tracking-widest text-black border-b border-black pb-1 bg-green-100/50 outline outline-1 outline-green-400 rounded-sm" style={{ fontSize: `${typography.headingSize}px` }}>
+                    <span className={`${editableClass} block w-full`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleSectionTitleBlur(section.id, e)}>
+                      {section.title}
+                    </span>
+                  </h2>
+                </>
+              );
+            }
+            if (isMovedSection) {
+              return (
+                <>
+                  <ActionButtons sectionId={section.id} itemId="" fieldType="moved_section" />
                   <h2 className="font-bold uppercase tracking-widest text-black border-b border-black pb-1 bg-green-100/50 outline outline-1 outline-green-400 rounded-sm" style={{ fontSize: `${typography.headingSize}px` }}>
                     <span className={`${editableClass} block w-full`} contentEditable={isEditable} suppressContentEditableWarning onBlur={(e) => handleSectionTitleBlur(section.id, e)}>
                       {section.title}
@@ -718,7 +779,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
               </>
             )}
             {!isSectionDeleted && !isDescChanged && (
-              <p className={`text-black`} style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
+              <p className={`text-black ${section._isMoved ? 'bg-green-100/50 outline outline-1 outline-green-400 rounded-sm transition-all' : ''}`} style={{ fontSize: `${typography.bodySize}px`, lineHeight: typography.lineHeight, textAlign: typography.textAlign || 'left' }}>
                 <span 
                   className={`${editableClass} block w-full`}
                   contentEditable={isEditable} 
@@ -734,15 +795,27 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
       return;
     }
 
-    section.items.forEach((item: any, index: number) => {
+    const sortedItems = [...section.items].sort((a: any, b: any) => {
+      const originalA = originalSection?.items.findIndex(i => i.id === a.id) ?? -1;
+      const originalB = originalSection?.items.findIndex(i => i.id === b.id) ?? -1;
+      const orderA = originalA !== -1 ? originalA : Number.MAX_SAFE_INTEGER;
+      const orderB = originalB !== -1 ? originalB : Number.MAX_SAFE_INTEGER;
+      return orderA - orderB;
+    });
+
+    sortedItems.forEach((item: any, index: number) => {
       const isItemDeleted = item._isDeleted;
       const originalItem = originalSection?.items.find(i => i.id === item.id);
       const isNewItem = pendingChanges?.sections && !originalItem && !isItemDeleted;
-      const highlightStr = 'bg-green-100/50 outline outline-1 outline-green-400 rounded-sm transition-all';
+      const isItemMoved = item._isMoved;
+      const highlightStr = 'bg-green-100/50 outline outline-1 outline-green-400 rounded-sm transition-all relative';
       
+      const isSectionMoved = section._isMoved;
       let itemHighlightClass = isNewItem ? highlightStr : '';
       if (isItemDeleted || isSectionDeleted) {
         itemHighlightClass = 'bg-red-100/50 outline outline-1 outline-red-400 rounded-sm';
+      } else if (isItemMoved || isSectionMoved) {
+        itemHighlightClass = 'bg-green-100/50 outline outline-1 outline-green-400 rounded-sm transition-all';
       }
 
       const line1Field = section.type === 'projects' ? 'title' : (item.subtitle ? 'subtitle' : 'title');
@@ -754,20 +827,28 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
       const dateHighlight = (pendingChanges?.sections && !isNewItem && (item.startDate !== originalItem?.startDate || item.endDate !== originalItem?.endDate)) ? highlightStr : '';
       const isDescChanged = (i: number) => pendingChanges?.sections && !isNewItem && item.description[i] !== originalItem?.description[i];
 
+      const pendingItemArrayIdx = pendingChanges?.sections?.find(s => s.id === section.id)?.items?.findIndex(i => i.id === item.id);
+      const targetOrder = pendingItemArrayIdx !== undefined && pendingItemArrayIdx !== -1 ? pendingItemArrayIdx + 1 : null;
+
       elements.push({
         id: `item-${item.id}`,
         type: 'item',
         content: (
-          <div 
-            key={`item-${item.id}`} 
-            data-measure-id={`item-${item.id}`} 
-            className={`group ${isItemDeleted || isNewItem ? 'group/diff' : ''} relative transition-colors duration-300 ${draggedItem?.sectionId === section.id && draggedItem?.index === index ? 'opacity-50 bg-slate-50/50 outline-dashed outline-2 outline-blue-400 rounded-sm outline-offset-4' : ''} ${itemHighlightClass}`}
-            draggable={draggableItem === item.id}
-            onDragStart={(e) => handleDragStart(e, section.id, index)}
-            onDragEnter={(e) => handleDragEnter(e, section.id, index)}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
+        <div 
+          key={`item-${item.id}`} 
+          data-measure-id={`item-${item.id}`} 
+          className={`group ${isItemDeleted || isNewItem || isItemMoved ? 'group/diff' : ''} relative transition-colors duration-300 ${draggedItem?.sectionId === section.id && draggedItem?.index === index ? 'opacity-50 bg-slate-50/50 outline-dashed outline-2 outline-blue-400 rounded-sm outline-offset-4' : ''} ${itemHighlightClass}`}
+          draggable={!pendingChanges && draggableItem === item.id}
+          onDragStart={(e) => handleDragStart(e, section.id, index)}
+          onDragEnter={(e) => handleDragEnter(e, section.id, index)}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+            {isItemMoved && !isNewItem && !isItemDeleted && targetOrder !== null && (
+              <div className="absolute -top-3 right-0 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm z-10 animate-in fade-in slide-in-from-top-1">
+                AI: Move to #{targetOrder}
+              </div>
+            )}
             {isItemDeleted && !isSectionDeleted && (
                <ActionButtons sectionId={section.id} itemId={item.id} fieldType="deleted_item" />
             )}
@@ -777,13 +858,18 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
             {isNewItem && (
                <ActionButtons sectionId={section.id} itemId={item.id} fieldType="new_item" />
             )}
-            <div 
-              className="absolute -left-8 top-1 opacity-0 group-hover:opacity-100 cursor-move transition-opacity p-1"
-              onMouseEnter={() => setDraggableItem(item.id)}
-              onMouseLeave={() => setDraggableItem(null)}
-            >
-              <GripVertical className="w-4 h-4 text-slate-300 hover:text-slate-500" />
-            </div>
+            {isItemMoved && !isNewItem && !isItemDeleted && !isSectionDeleted && (
+               <ActionButtons sectionId={section.id} itemId={item.id} fieldType="moved_item" />
+            )}
+            {!pendingChanges && (
+              <div 
+                className="absolute -left-8 top-1 opacity-0 group-hover:opacity-100 cursor-move transition-opacity p-1"
+                onMouseEnter={() => setDraggableItem(item.id)}
+                onMouseLeave={() => setDraggableItem(null)}
+              >
+                <GripVertical className="w-4 h-4 text-slate-300 hover:text-slate-500" />
+              </div>
+            )}
             <div className={isItemDeleted || isSectionDeleted ? "opacity-70 pointer-events-none [&_.text-black]:!text-red-900 [&_span]:!line-through [&_div]:!line-through [&_p]:!line-through [&_li]:!line-through" : ""}>
             {(() => {
               const line1Text = section.type === 'projects' ? item.title : (item.subtitle || item.title);
@@ -1105,10 +1191,11 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     const scrollTop = e.currentTarget.scrollTop;
     // Account for zoom and gaps. 
     const pageHeightPx = (maxAvailableHeightPx + (settings.margin.top + settings.margin.bottom)*96) * zoom;
-    const paddingAndGapOffset = (64 * zoom) + (96 * zoom); // pt-16, gap-24
+    const gapPx = 96 * zoom; // gap-24
+    const topPaddingPx = Math.max(64, 52 * zoom);
     
     // Roughly estimate which page is primarily in view
-    const pageIndex = Math.max(0, Math.floor((scrollTop + (pageHeightPx/2)) / (pageHeightPx + paddingAndGapOffset)));
+    const pageIndex = Math.max(0, Math.floor((scrollTop - topPaddingPx + (pageHeightPx/2)) / (pageHeightPx + gapPx)));
     setCurrentPageNum(Math.min(pages.length, pageIndex + 1));
   };
 
@@ -1139,7 +1226,15 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
 
 
       <section className="flex-1 w-full h-full overflow-auto relative" id="preview-container" onScroll={handleContainerScroll}>
-        <div className="pt-16 pb-16 px-8 flex flex-col items-center min-w-full w-max">
+        <div 
+          className="flex flex-col items-center min-w-full w-max"
+          style={{ 
+            paddingTop: Math.max(64, 52 * zoom), 
+            paddingBottom: Math.max(64, 52 * zoom),
+            paddingLeft: Math.max(32, 48 * zoom),
+            paddingRight: Math.max(32, 48 * zoom)
+          }}
+        >
         <FloatingToolbar />
 
       {/* Hidden Measure Layer */}

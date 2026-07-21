@@ -159,7 +159,7 @@ export function Rulers({ zoom = 1 }: { zoom?: number }) {
           <div className="w-[16px] h-[2px] bg-blue-600" />
           <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[8px] border-l-blue-600 drop-shadow-md" />
           {dragging === 'top' && (
-            <div className="absolute right-full mr-1 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap z-50">
+            <div className="absolute left-full ml-1 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap z-50">
               {margin.top.toFixed(3).replace(/\.?0+$/, '')}&quot;
             </div>
           )}
@@ -174,7 +174,7 @@ export function Rulers({ zoom = 1 }: { zoom?: number }) {
           <div className="w-[16px] h-[2px] bg-blue-600" />
           <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[8px] border-l-blue-600 drop-shadow-md" />
           {dragging === 'bottom' && (
-            <div className="absolute right-full mr-1 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap z-50">
+            <div className="absolute left-full ml-1 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap z-50">
               {margin.bottom.toFixed(3).replace(/\.?0+$/, '')}&quot;
             </div>
           )}
