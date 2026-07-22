@@ -11,7 +11,7 @@ import { Bold, Italic, Underline, GripVertical, Trash2, Check, Sparkles, X } fro
 import { Rulers } from "./Ruler";
 import { useToast } from "@/hooks/use-toast";
 import { diffWords } from "diff";
-
+import { usePagination } from "@/hooks/usePagination";
 const generateWordDiffHtml = (oldStr: string, newStr: string) => {
    const diff = diffWords(oldStr || "", newStr || "");
    let html = '';
@@ -194,7 +194,6 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     rejectPartialChange
   } = useResumeStore();
   const { toast } = useToast();
-  const [itemHeights, setItemHeights] = useState<Record<string, number>>({});
   const [zoom, setZoom] = useState(1);
   const [isSpacingMode, setIsSpacingMode] = useState(false);
   
@@ -225,7 +224,6 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     );
   };
 
-  const measureContainerRef = React.useRef<HTMLDivElement>(null);
   const printRef = React.useRef<HTMLDivElement>(null);
   const pageSize = resume.settings.pageSize || 'Letter';
   
@@ -624,8 +622,7 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
                   alt="Profile" 
                   className="w-24 h-24 object-cover rounded-md" 
                   onLoad={() => {
-                    // Force a re-measure now that the image is loaded
-                    setItemHeights(prev => ({...prev}));
+                    // Handled by ResizeObserver in usePagination
                   }}
                 />
               </div>
@@ -1117,73 +1114,10 @@ export function PreviewPane({ showRuler }: { showRuler?: boolean }) {
     });
   }
 
-  React.useLayoutEffect(() => {
-    if (!measureContainerRef.current) return;
-    
-    const measureHeights = () => {
-      const heights: Record<string, number> = {};
-      let changed = false;
-      const nodes = measureContainerRef.current!.querySelectorAll('[data-measure-id]');
-      nodes.forEach(node => {
-        const id = node.getAttribute('data-measure-id')!;
-        const rect = node.getBoundingClientRect();
-        // The rect height is visually scaled by zoom, so we divide by zoom to get the true CSS pixel height
-        const h = rect.height / zoom;
-        if (Math.abs((itemHeights[id] || 0) - h) > 0.5) changed = true;
-        heights[id] = h;
-      });
-      if (changed) {
-        setItemHeights(heights);
-      }
-    };
-
-    measureHeights();
-
-    // Use ResizeObserver to catch font loading or any other layout shifts
-    const observer = new ResizeObserver(() => {
-      measureHeights();
-    });
-    observer.observe(measureContainerRef.current);
-
-    // Also observe all document fonts
-    if ('fonts' in document) {
-      document.fonts.ready.then(() => {
-        measureHeights();
-      });
-    }
-
-    return () => observer.disconnect();
-  });
-
-  const pages: React.ReactNode[][] = [[]];
-  let currentHeight = 0;
-  
-  elements.forEach((el, index) => {
-    const h = itemHeights[el.id] || 0;
-    
-    // Check for orphan section title
-    let requiredHeight = h;
-    if (el.type === 'section-title' && index + 1 < elements.length) {
-       requiredHeight += itemHeights[elements[index + 1].id] || 0;
-    }
-
-    if (currentHeight + requiredHeight > maxAvailableHeightPx && pages[pages.length - 1].length > 0) {
-      if (el.type === 'gap') {
-        // Skip gap if it causes a page break
-        pages.push([]);
-        currentHeight = 0;
-      } else {
-        pages.push([el.content]);
-        currentHeight = h;
-      }
-    } else {
-      if (currentHeight === 0 && el.type === 'gap') {
-        // Skip gap if it's the very first element on a new page
-      } else {
-        pages[pages.length - 1].push(el.content);
-        currentHeight += h;
-      }
-    }
+  const { pages, measureContainerRef, itemHeights } = usePagination({
+    elements,
+    maxAvailableHeightPx,
+    zoom,
   });
 
   const [currentPageNum, setCurrentPageNum] = useState(1);
