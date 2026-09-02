@@ -1,4 +1,5 @@
 export type JobSource = 'relasi/teman' | 'keluarga' | 'dosen' | 'linked in' | 'grup WA' | 'website perusahaan' | 'glints' | 'jobstreet' | 'indeed' | 'mendapat sendiri di dunia nyata' | 'instagram' | 'twitter' | 'Threads by Instagram' | 'facebook' | 'referral' | 'dealls';
+export type JobStatus = 'saved' | 'applied' | 'assessment' | 'interviewing' | 'offered' | 'rejected' | 'withdrawn' | 'closed';
 export type JobAppliedVia = 'email' | 'website perusahaan' | 'google form' | 'glints' | 'jobstreet' | 'linked in easy apply' | 'indeed' | 'ordal' | 'dikirim ke tempat' | 'dealls';
 export type JobWorkSetup = 'WFO' | 'WFH' | 'Hybrid';
 
@@ -21,4 +22,6 @@ export interface Job {
   appliedVia?: JobAppliedVia;
   salaryRange?: string;
   workSetup?: JobWorkSetup;
+  isArchived?: boolean;
+  cvUrl?: string;
 }

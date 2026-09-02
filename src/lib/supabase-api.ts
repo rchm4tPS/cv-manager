@@ -97,7 +97,7 @@ export const supabaseApi = {
 
   // --- Jobs ---
 
-  async saveJob(job: { id: string; userId: string; company: string; position: string; location?: string; status: string; link?: string; dateAdded: string; dateApplied?: string; description?: string; source?: string; appliedVia?: string; salaryRange?: string; workSetup?: string }) {
+  async saveJob(job: { id: string; userId: string; company: string; position: string; location?: string; status: string; link?: string; dateAdded: string; dateApplied?: string; description?: string; source?: string; appliedVia?: string; salaryRange?: string; workSetup?: string; isArchived?: boolean; cvUrl?: string }) {
     const { data, error } = await supabase
       .from('jobs')
       .upsert({
@@ -114,7 +114,9 @@ export const supabaseApi = {
         source: job.source,
         applied_via: job.appliedVia,
         salary_range: job.salaryRange,
-        work_setup: job.workSetup
+        work_setup: job.workSetup,
+        is_archived: job.isArchived ?? false,
+        cv_url: job.cvUrl
       })
       .select()
       .single();
@@ -137,7 +139,9 @@ export const supabaseApi = {
       source: data.source,
       appliedVia: data.applied_via,
       salaryRange: data.salary_range,
-      workSetup: data.work_setup
+      workSetup: data.work_setup,
+      isArchived: data.is_archived,
+      cvUrl: data.cv_url
     };
   },
 
@@ -155,6 +159,8 @@ export const supabaseApi = {
     if (updates.appliedVia !== undefined) dbUpdates.applied_via = (updates.appliedVia as string) === "" ? null : updates.appliedVia;
     if (updates.salaryRange !== undefined) dbUpdates.salary_range = updates.salaryRange;
     if (updates.workSetup !== undefined) dbUpdates.work_setup = (updates.workSetup as string) === "" ? null : updates.workSetup;
+    if (updates.isArchived !== undefined) dbUpdates.is_archived = updates.isArchived;
+    if (updates.cvUrl !== undefined) dbUpdates.cv_url = updates.cvUrl;
 
     const { data, error } = await supabase
       .from('jobs')
@@ -181,7 +187,9 @@ export const supabaseApi = {
       source: data.source,
       appliedVia: data.applied_via,
       salaryRange: data.salary_range,
-      workSetup: data.work_setup
+      workSetup: data.work_setup,
+      isArchived: data.is_archived,
+      cvUrl: data.cv_url
     };
   },
 
@@ -210,7 +218,9 @@ export const supabaseApi = {
       source: row.source,
       appliedVia: row.applied_via,
       salaryRange: row.salary_range,
-      workSetup: row.work_setup
+      workSetup: row.work_setup,
+      isArchived: row.is_archived,
+      cvUrl: row.cv_url
     }));
   },
 
@@ -268,5 +278,35 @@ export const supabaseApi = {
       throw error;
     }
     return true;
+  },
+
+  async uploadJobCV(file: File, userId: string) {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('cv-uploads')
+      .upload(filePath, file, { upsert: false });
+
+    if (error) {
+      console.error('Error uploading CV:', error);
+      throw error;
+    }
+    
+    return filePath;
+  },
+
+  async getCVSignedUrl(path: string) {
+    const { data, error } = await supabase.storage
+      .from('cv-uploads')
+      .createSignedUrl(path, 60); // 60 seconds validity
+
+    if (error) {
+      console.error('Error getting signed url for CV:', error);
+      return null;
+    }
+
+    return data.signedUrl;
   }
 };

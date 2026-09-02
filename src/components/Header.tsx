@@ -221,7 +221,7 @@ export function Header() {
               </Link>
               <Link href="/editor/new" onClick={() => { setTailoringJob(null); setIsMenuOpen(false); }}>
                 <Button variant={isEditor ? "secondary" : "ghost"} className="w-full justify-start h-12 text-md font-medium text-slate-700 hover:bg-slate-100 hover:text-blue-600 transition-colors">
-                  <FileText className="w-5 h-5 mr-3 text-slate-500" /> Editor
+                  <FileText className="w-5 h-5 mr-3 text-slate-500" /> Editor (New Blank CV)
                 </Button>
               </Link>
               <Link href="/jobs" onClick={() => { setTailoringJob(null); setIsMenuOpen(false); }}>

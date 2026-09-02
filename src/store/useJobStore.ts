@@ -11,6 +11,7 @@ interface JobStore {
   addJob: (jobData: Omit<Job, 'id'>) => Promise<Job | null>;
   updateJob: (id: string, updates: Partial<Job>) => Promise<boolean>;
   deleteJobs: (ids: string[]) => Promise<boolean>;
+  archiveJobs: (ids: string[], isArchived: boolean) => Promise<boolean>;
 }
 
 export const useJobStore = create<JobStore>((set, get) => ({
@@ -84,6 +85,30 @@ export const useJobStore = create<JobStore>((set, get) => ({
       return true;
     } catch (error) {
       console.error('Failed to delete jobs:', error);
+      set({ jobs: previousJobs });
+      return false;
+    }
+  },
+
+  archiveJobs: async (ids, isArchived) => {
+    // Optimistic update
+    const previousJobs = get().jobs;
+    set((state) => ({
+      jobs: state.jobs.map(j => ids.includes(j.id) ? { ...j, isArchived } : j)
+    }));
+
+    try {
+      const results = await Promise.all(
+        ids.map(id => supabaseApi.updateJob(id, { isArchived }))
+      );
+      if (results.some(res => !res)) {
+        // If any failed, revert
+        set({ jobs: previousJobs });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to archive jobs:', error);
       set({ jobs: previousJobs });
       return false;
     }

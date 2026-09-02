@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PopoverSelect } from "@/components/ui/popover-select";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
 
   const [existingCompanies, setExistingCompanies] = useState<string[]>([]);
   const [isCompanyFocused, setIsCompanyFocused] = useState(false);
+  const [cvFile, setCvFile] = useState<File | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -53,6 +55,7 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
 
   useEffect(() => {
     if (isOpen) {
+      setCvFile(null);
       if (job) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setFormData({
@@ -106,6 +109,11 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
 
     setIsSaving(true);
     try {
+      let uploadedCvUrl = job?.cvUrl;
+      if (cvFile) {
+        uploadedCvUrl = await supabaseApi.uploadJobCV(cvFile, user!.id);
+      }
+
       const { dateApplied, ...restFormData } = formData;
       const jobToSave = {
         id: job ? job.id : `temp-${Date.now()}`,
@@ -116,27 +124,38 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
         source: restFormData.source === "" ? undefined : restFormData.source as JobSource,
         appliedVia: restFormData.appliedVia === "" ? undefined : restFormData.appliedVia as JobAppliedVia,
         workSetup: restFormData.workSetup === "" ? undefined : restFormData.workSetup as JobWorkSetup,
+        cvUrl: uploadedCvUrl,
       };
       
       const jobStore = useJobStore.getState();
+      let success = false;
       if (job) {
-        await jobStore.updateJob(job.id, jobToSave);
+        success = await jobStore.updateJob(job.id, jobToSave);
       } else {
-        await jobStore.addJob(jobToSave);
+        const newJob = await jobStore.addJob(jobToSave);
+        success = !!newJob;
       }
       
-      toast({
-        title: "Success",
-        description: job ? "Job application updated!" : "New job application tracked!"
-      });
-      
-      onSaved();
-      onClose();
+      if (success) {
+        toast({
+          title: "Success",
+          description: job ? "Job application updated!" : "New job application tracked!"
+        });
+        
+        onSaved();
+        onClose();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save job application. Please try again.",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error(error);
       toast({
         title: "Error",
-        description: "Failed to save job application",
+        description: "An unexpected error occurred.",
         variant: "destructive"
       });
     } finally {
@@ -207,16 +226,21 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase">Status</label>
-              <select 
-                className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.status || "saved"} onChange={e => setFormData({...formData, status: e.target.value})}
-              >
-                <option value="saved">Saved</option>
-                <option value="applied">Applied</option>
-                <option value="interviewed">Interviewed</option>
-                <option value="offered">Offered</option>
-                <option value="rejected">Rejected</option>
-              </select>
+              <PopoverSelect 
+                value={formData.status || "saved"} 
+                onValueChange={(val) => setFormData({...formData, status: val})}
+                options={[
+                  { label: "Saved", value: "saved" },
+                  { label: "Applied", value: "applied" },
+                  { label: "Assessment", value: "assessment" },
+                  { label: "Interviewing", value: "interviewing" },
+                  { label: "Offered", value: "offered" },
+                  { label: "Rejected", value: "rejected" },
+                  { label: "Withdrawn", value: "withdrawn" },
+                  { label: "Closed", value: "closed" }
+                ]}
+                placeholder="Select status..."
+              />
             </div>
           </div>
 
@@ -263,26 +287,54 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase">CV / Resume (PDF) - Optional</label>
+            <input 
+              type="file" 
+              accept="application/pdf"
+              className="w-full h-9 rounded-md border bg-white px-3 py-1.5 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  if (file.type !== 'application/pdf') {
+                    toast({ title: "Invalid file", description: "Only PDF files are allowed", variant: "destructive" });
+                    e.target.value = '';
+                    return;
+                  }
+                  if (file.size > 300 * 1024) {
+                    toast({ title: "File too large", description: "Maximum file size is 300KB", variant: "destructive" });
+                    e.target.value = '';
+                    return;
+                  }
+                  setCvFile(file);
+                } else {
+                  setCvFile(null);
+                }
+              }}
+            />
+            {job?.cvUrl && !cvFile && (
+              <p className="text-xs text-muted-foreground">Currently has a CV attached. Uploading a new one will replace it.</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase">Source</label>
-              <select 
-                className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.source || ""} onChange={e => setFormData({...formData, source: e.target.value as JobSource})}
-              >
-                <option value="">Select source...</option>
-                {JOB_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <PopoverSelect 
+                value={formData.source || ""} 
+                onValueChange={(val) => setFormData({...formData, source: val as JobSource})}
+                options={JOB_SOURCES.map(s => ({ label: s, value: s }))}
+                placeholder="Select source..."
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase">Applied Via</label>
-              <select 
-                className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.appliedVia || ""} onChange={e => setFormData({...formData, appliedVia: e.target.value as JobAppliedVia})}
-              >
-                <option value="">Select application method...</option>
-                {JOB_APPLIED_VIA.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <PopoverSelect 
+                value={formData.appliedVia || ""} 
+                onValueChange={(val) => setFormData({...formData, appliedVia: val as JobAppliedVia})}
+                options={JOB_APPLIED_VIA.map(s => ({ label: s, value: s }))}
+                placeholder="Select application method..."
+              />
             </div>
           </div>
 
@@ -297,13 +349,12 @@ export function AddJobModal({ isOpen, onClose, job, onSaved }: AddJobModalProps)
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase">Work Setup</label>
-              <select 
-                className="w-full h-9 rounded-md border bg-white px-3 text-sm"
-                value={formData.workSetup || ""} onChange={e => setFormData({...formData, workSetup: e.target.value as JobWorkSetup})}
-              >
-                <option value="">Select work setup...</option>
-                {JOB_WORK_SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <PopoverSelect 
+                value={formData.workSetup || ""} 
+                onValueChange={(val) => setFormData({...formData, workSetup: val as JobWorkSetup})}
+                options={JOB_WORK_SETUPS.map(s => ({ label: s, value: s }))}
+                placeholder="Select work setup..."
+              />
             </div>
           </div>
 
